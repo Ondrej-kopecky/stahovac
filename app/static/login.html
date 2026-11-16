@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Přihlášení · Stahovač</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<meta name="theme-color" content="#0a0c10">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="Stahovač">
+<style>
+  :root { --bg:#0a0c10; --line:rgba(255,255,255,.1); --text:#eef0f4; --muted:#9aa3b2; --dim:#646d7d; --acc:#4f8cff; --err:#ff5c5c; }
+  * { box-sizing:border-box; }
+  body { margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center; padding:16px; font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; background:var(--bg); color:var(--text); overflow:hidden; }
+  /* rozmazané barevné skvrny v pozadí (bez obrázků — před přihlášením plakáty nejsou dostupné) */
+  .glow { position:fixed; inset:0; z-index:-1; overflow:hidden; }
+  .glow span { position:absolute; border-radius:50%; filter:blur(90px); opacity:.45; animation:drift 22s ease-in-out infinite alternate; }
+  .glow span:nth-child(1) { width:520px; height:520px; background:#2c5cd6; top:-140px; left:-120px; }
+  .glow span:nth-child(2) { width:440px; height:440px; background:#7b3fd1; bottom:-160px; right:-100px; animation-delay:-8s; opacity:.32; }
+  .glow span:nth-child(3) { width:300px; height:300px; background:#1c8f8a; top:45%; left:55%; animation-delay:-15s; opacity:.22; }
+  @keyframes drift { to { transform:translate(60px, 40px) scale(1.12); } }
+  .card { width:min(390px, 100%); background:rgba(18,21,28,.72); backdrop-filter:blur(24px) saturate(1.4); -webkit-backdrop-filter:blur(24px) saturate(1.4); border:1px solid var(--line); border-radius:20px; padding:32px 28px 26px; box-shadow:0 30px 80px rgba(0,0,0,.5); }
+  .logo { display:flex; align-items:center; gap:12px; margin-bottom:6px; }
+  .logo img { width:40px; height:40px; }
+  h1 { font-size:20px; margin:0; letter-spacing:-.01em; }
+  .sub { color:var(--muted); font-size:13px; margin:2px 0 24px; }
+  label.f { display:block; font-size:12px; font-weight:500; color:var(--muted); margin:14px 0 6px; }
+  input[type=text], input[type=password] { width:100%; height:44px; padding:0 14px; border-radius:11px; border:1px solid var(--line); background:rgba(0,0,0,.3); color:var(--text); font-size:15px; transition:border-color .15s, background .15s; }
+  input:focus { outline:none; border-color:rgba(79,140,255,.7); background:rgba(0,0,0,.4); }
+  .rem { display:flex; align-items:center; gap:9px; margin:16px 0 18px; font-size:13.5px; color:var(--muted); cursor:pointer; user-select:none; }
+  .rem input { width:16px; height:16px; accent-color:var(--acc); margin:0; }
+  button { width:100%; height:46px; border-radius:11px; border:0; background:var(--acc); color:#fff; font-size:15px; font-weight:600; cursor:pointer; font-family:inherit; transition:background .15s; }
+  button:hover { background:#6399ff; }
+  .err { color:var(--err); font-size:13px; margin:0 0 10px; display:none; align-items:center; gap:8px; padding:9px 12px; border-radius:9px; background:rgba(255,92,92,.1); border:1px solid rgba(255,92,92,.25); }
+  .err.on { display:flex; }
+  .err svg { width:16px; height:16px; flex:none; stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; }
+  @media (prefers-reduced-motion:reduce) { .glow span { animation:none; } }
+</style>
+</head>
+<body>
+  <div class="glow"><span></span><span></span><span></span></div>
+  <form class="card" method="post" action="/login" autocomplete="on">
+    <div class="logo"><img src="/favicon.svg" alt=""><div><h1>Webshare stahovač</h1></div></div>
+    <p class="sub">Stahuje rovnou do Jellyfin knihovny</p>
+    <p class="err" id="err"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg><span></span></p>
+    <label class="f" for="user">Uživatel</label>
+    <input type="text" id="user" name="user" autocomplete="username" autocapitalize="none" autofocus required>
+    <label class="f" for="password">Heslo</label>
+    <input type="password" id="password" name="password" autocomplete="current-password" required>
+    <label class="rem"><input type="checkbox" name="remember" checked> Zapamatovat na tomto zařízení (90 dní)</label>
+    <button type="submit">Přihlásit</button>
+  </form>
+  <script>
+    const err = new URLSearchParams(location.search).get('err');
+    if (err) {
+      const el = document.getElementById('err');
+      el.querySelector('span').textContent = err === 'blocked' ? 'Příliš mnoho pokusů. Zkus to za 15 minut.' : 'Špatné heslo, zkus to znovu.';
+      el.classList.add('on');
+    }
+  </script>
+</body>
+</html>

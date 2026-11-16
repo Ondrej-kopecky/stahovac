@@ -1,0 +1,43 @@
+# Stahovač: vložíš odkaz z Webshare (nebo Fastshare), server ho stáhne 16 spojeními
+# rovnou do knihovny Jellyfinu. Nastavení je v souboru .env (vzor: .env.example).
+#
+#   cp .env.example .env    # a vyplnit
+#   docker compose up -d --build
+#
+# Nemáš Jellyfin? Spusť ho rovnou s ním:
+#   docker compose --profile jellyfin up -d --build
+
+services:
+  stahovac:
+    build: ./app
+    image: stahovac
+    container_name: stahovac
+    restart: unless-stopped
+    user: "${PUID:-1000}:${PGID:-1000}"   # vlastník složky s filmy (na Linuxu zjistíš příkazem: id)
+    env_file: .env
+    ports:
+      # Jen na zadanou adresu, nikdy do internetu. Výchozí 127.0.0.1 = jen tenhle počítač.
+      # Ze sítě: BIND_IP = adresa serveru v domácí síti (třeba 192.168.1.10).
+      - "${BIND_IP:-127.0.0.1}:8097:8097"
+    volumes:
+      - ${MEDIA_DIR:-./media}:/downloads   # tady vzniknou složky filmy/ a serialy/
+      - ./data:/data                       # přihlášení, rozpracovaná stahování, wishlist
+    environment:
+      - TZ=Europe/Prague
+
+  # Nepovinné: Jellyfin vedle stahovače (když ho ještě nemáš). Spustí se jen s --profile jellyfin.
+  # V .env pak: JELLYFIN_URL=http://jellyfin:8096 a JELLYFIN_MEDIA_PATH=/media
+  jellyfin:
+    image: jellyfin/jellyfin:12.4      # vyzkoušená řada; aktualizace = změnit číslo
+    container_name: jellyfin
+    profiles: ["jellyfin"]
+    restart: unless-stopped
+    user: "${PUID:-1000}:${PGID:-1000}"
+    ports:
+      - "${BIND_IP:-127.0.0.1}:8096:8096"
+    volumes:
+      - ./jellyfin/config:/config
+      - ./jellyfin/cache:/cache
+      - ${MEDIA_DIR:-./media}:/media:ro    # filmy jen ke čtení, mazání řeší stahovač
+    environment:
+      - TZ=Europe/Prague

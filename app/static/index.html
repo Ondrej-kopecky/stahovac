@@ -1,0 +1,1794 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Webshare stahovač</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<meta name="theme-color" content="#0a0c10">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="Stahovač">
+<style>
+  :root {
+    --bg:#0a0c10; --bg2:#10131a; --card:#141821; --card2:#1a1f2a; --glass:rgba(16,19,26,.72);
+    --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.14);
+    --text:#eef0f4; --muted:#9aa3b2; --dim:#646d7d;
+    --acc:#4f8cff; --acc2:#3a6fe0; --ok:#3ecf8e; --err:#ff5c5c; --warn:#f5b342; --heart:#ff4f5e;
+    --r:12px; --pad:clamp(16px, 4vw, 56px); --hdr:68px;
+  }
+  * { box-sizing:border-box; }
+  html { scroll-behavior:smooth; }
+  body { margin:0; font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; overflow-x:hidden; }
+  a { color:inherit; text-decoration:none; }
+  button, select, input { font-family:inherit; }
+  svg.i { width:18px; height:18px; flex:none; stroke:currentColor; fill:none; stroke-width:1.75; stroke-linecap:round; stroke-linejoin:round; }
+  .wrap { padding:0 var(--pad); }
+  svg.i.fill { fill:currentColor; stroke:none; }
+  svg.i.star { width:14px; height:14px; color:var(--warn); fill:currentColor; stroke:none; vertical-align:-2px; margin-right:4px; }
+
+  /* ---------- tlačítka ---------- */
+  .btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; height:40px; padding:0 16px; border-radius:10px; border:1px solid var(--line2); background:rgba(255,255,255,.06); color:var(--text); font-size:14px; font-weight:500; cursor:pointer; white-space:nowrap; transition:background .15s, border-color .15s, transform .15s; }
+  .btn:hover { background:rgba(255,255,255,.11); }
+  .btn:disabled { opacity:.5; cursor:default; }
+  .btn.primary { background:var(--acc); border-color:var(--acc); color:#fff; font-weight:600; }
+  .btn.primary:hover { background:#6399ff; }
+  .btn.light { background:#fff; border-color:#fff; color:#0a0c10; font-weight:600; }
+  .btn.light:hover { background:#dfe3ea; }
+  .btn.danger { color:var(--err); border-color:rgba(255,92,92,.35); background:transparent; }
+  .btn.danger:hover { background:rgba(255,92,92,.1); }
+  .btn.sm { height:32px; padding:0 12px; font-size:13px; border-radius:8px; gap:6px; }
+  .btn.sm svg { width:15px; height:15px; }
+  .btn.icon { width:40px; padding:0; }
+  .btn.sm.icon { width:32px; }
+
+  /* ---------- hlavička ---------- */
+  header.top { position:sticky; top:0; z-index:20; height:var(--hdr); display:flex; align-items:center; gap:20px; padding:0 var(--pad);
+               background:linear-gradient(to bottom, rgba(10,12,16,.92), rgba(10,12,16,.55)); backdrop-filter:blur(16px) saturate(1.4); -webkit-backdrop-filter:blur(16px) saturate(1.4);
+               border-bottom:1px solid transparent; transition:border-color .2s, background .2s; }
+  header.top.scrolled { border-bottom-color:var(--line); background:var(--glass); }
+  .brand { display:flex; align-items:center; gap:10px; font-weight:700; font-size:16px; letter-spacing:-.01em; flex:none; }
+  .brand img { width:30px; height:30px; transition:transform .15s; }
+  .brand:hover img { transform:scale(1.07); }
+  nav.main { display:flex; gap:4px; flex:none; }
+  nav.main a { padding:7px 12px; border-radius:8px; color:var(--muted); font-size:14px; font-weight:500; display:flex; align-items:center; gap:7px; transition:color .15s, background .15s; }
+  nav.main a svg { width:16px; height:16px; opacity:.85; }
+  nav.main a:hover { color:var(--text); }
+  nav.main a.on { color:var(--text); background:rgba(255,255,255,.07); }
+
+  form.add { flex:1; min-width:0; display:flex; align-items:center; gap:6px; max-width:720px; margin:0 auto; height:42px; padding:4px; border-radius:12px; background:rgba(255,255,255,.06); border:1px solid var(--line); transition:border-color .15s, background .15s; }
+  form.add:focus-within { border-color:rgba(79,140,255,.6); background:rgba(255,255,255,.08); }
+  form.add > svg { margin-left:8px; color:var(--dim); }
+  form.add input { flex:1; min-width:0; width:0; background:none; border:0; outline:none; color:var(--text); font-size:14px; padding:0 4px; }
+  form.add input::placeholder { color:var(--dim); }
+  .seg { display:flex; background:rgba(0,0,0,.35); border-radius:8px; padding:2px; flex:none; }
+  .seg button { border:0; background:none; color:var(--muted); font-size:13px; padding:5px 10px; border-radius:6px; cursor:pointer; display:flex; align-items:center; gap:5px; }
+  .seg button svg { width:15px; height:15px; }
+  .seg button.on { background:rgba(255,255,255,.12); color:var(--text); }
+  form.add .btn { height:32px; border-radius:8px; padding:0 14px; }
+
+  .hright { display:flex; align-items:center; gap:8px; flex:none; }
+  .search { position:relative; display:flex; align-items:center; }
+  .search svg { position:absolute; left:11px; color:var(--dim); pointer-events:none; }
+  .search input { width:200px; height:40px; padding:0 12px 0 36px; border-radius:10px; border:1px solid var(--line); background:rgba(255,255,255,.04); color:var(--text); font-size:14px; outline:none; transition:width .2s, border-color .15s; }
+  .search input:focus { width:260px; border-color:rgba(79,140,255,.6); }
+  .dlbtn { position:relative; }
+  /* mobil: navigace dole jako v appce (palec dosáhne), na PC skrytá */
+  .tabbar { display:none; }
+  .dlbtn .ring { position:absolute; inset:-1px; border-radius:11px; padding:2px; background:conic-gradient(var(--ok) calc(var(--p,0)*1%), transparent 0);
+                 -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite:xor; mask-composite:exclude; pointer-events:none; opacity:0; transition:opacity .2s; }
+  .dlbtn.busy .ring { opacity:1; }
+  .dlbtn .badge { position:absolute; top:-5px; right:-5px; min-width:18px; height:18px; padding:0 5px; border-radius:9px; background:var(--ok); color:#06120c; font-size:11px; font-weight:700; display:none; place-items:center; }
+  .dlbtn.busy .badge { display:grid; }
+
+  /* proužek s běžícím stahováním pod hlavičkou */
+  .strip { position:sticky; top:var(--hdr); z-index:19; display:none; }
+  .strip.on { display:block; }
+  .strip button { all:unset; box-sizing:border-box; cursor:pointer; display:flex; align-items:center; gap:14px; width:100%; padding:9px var(--pad); background:rgba(20,24,33,.88); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); border-bottom:1px solid var(--line); font-size:13px; position:relative; }
+  .strip button:hover { background:rgba(26,31,42,.95); }
+  .strip .dot { width:8px; height:8px; border-radius:50%; background:var(--ok); flex:none; animation:ping 1.6s infinite; }
+  .strip .nm { font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; flex:1; }
+  .strip .st { color:var(--muted); white-space:nowrap; font-variant-numeric:tabular-nums; display:flex; gap:16px; }
+  .strip .st b { color:var(--text); font-weight:600; }
+  .strip .bar { position:absolute; left:0; bottom:-1px; height:2px; background:linear-gradient(90deg, #2fae75, var(--ok)); transition:width .8s ease; box-shadow:0 0 10px rgba(62,207,142,.6); }
+  @keyframes pulse { 50% { opacity:.25; } }
+
+  /* ---------- hero ---------- */
+  .hero { position:relative; height:clamp(420px, 68vh, 680px); margin-top:calc(-1 * var(--hdr)); overflow:hidden; isolation:isolate; }
+  .hero .slide { position:absolute; inset:0; opacity:0; transition:opacity .9s ease; pointer-events:none; }
+  .hero .slide.on { opacity:1; pointer-events:auto; }
+  .hero .bd { position:absolute; inset:0; background-size:cover; background-position:center 25%; transform:scale(1.04); transition:transform 9s ease-out; }
+  .hero .slide.on .bd { transform:scale(1); }
+  .hero .bd.blur { filter:blur(30px) brightness(.6); transform:scale(1.2); }
+  .hero .shade { position:absolute; inset:0; background:
+      linear-gradient(90deg, rgba(10,12,16,.95) 0%, rgba(10,12,16,.7) 35%, rgba(10,12,16,.1) 70%),
+      linear-gradient(0deg, var(--bg) 0%, rgba(10,12,16,0) 40%),
+      linear-gradient(180deg, rgba(10,12,16,.6) 0%, rgba(10,12,16,0) 22%); }
+  .hero .body { position:absolute; left:var(--pad); right:var(--pad); bottom:clamp(40px, 9vh, 90px); max-width:620px; }
+  .hero .kick { font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:.12em; color:var(--acc); margin-bottom:14px; display:flex; align-items:center; gap:8px; }
+  .hero .logo { display:block; max-width:min(440px, 80%); max-height:150px; object-fit:contain; object-position:left bottom; margin-bottom:18px; filter:drop-shadow(0 4px 24px rgba(0,0,0,.6)); }
+  .hero h1 { font-size:clamp(32px, 4.4vw, 56px); line-height:1.05; letter-spacing:-.03em; margin:0 0 14px; text-shadow:0 2px 24px rgba(0,0,0,.5); }
+  .hero p { color:#cfd4dd; font-size:15px; line-height:1.6; margin:12px 0 22px; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; text-shadow:0 1px 8px rgba(0,0,0,.6); }
+  .hero .acts { display:flex; gap:10px; flex-wrap:wrap; }
+  .hero .dots { position:absolute; right:var(--pad); bottom:clamp(40px, 9vh, 90px); display:flex; gap:8px; z-index:2; }
+  .hero .dots button { width:28px; height:4px; border-radius:2px; border:0; padding:0; background:rgba(255,255,255,.25); cursor:pointer; overflow:hidden; position:relative; }
+  .hero .dots button.on::after { content:""; position:absolute; inset:0; background:#fff; transform-origin:left; animation:fill var(--dur,9s) linear forwards; }
+  .hero.paused .dots button.on::after { animation-play-state:paused; }
+  @keyframes fill { from { transform:scaleX(0); } to { transform:scaleX(1); } }
+  .hero.empty { height:auto; margin-top:0; padding:80px var(--pad) 40px; }
+  .hero.empty h1 { font-size:40px; }
+
+  .meta { display:flex; flex-wrap:wrap; align-items:center; gap:6px 14px; color:#d6dae2; font-size:14px; }
+  .meta > span + span::before { content:""; display:inline-block; width:3px; height:3px; border-radius:50%; background:var(--dim); margin-right:14px; vertical-align:middle; }
+  .meta .star { color:var(--warn); }
+  .meta .seen { color:var(--ok); display:inline-flex; align-items:center; gap:4px; }
+  .meta .seen svg { width:15px; height:15px; }
+  .tags { display:flex; flex-wrap:wrap; gap:6px; margin-top:12px; }
+  .tags a:hover { background:rgba(255,255,255,.16); color:#fff; }
+  .tags span, .tags a { font-size:12px; padding:3px 10px; border-radius:999px; background:rgba(255,255,255,.08); color:#c4c9d4; backdrop-filter:blur(6px); }
+
+  /* ---------- řady ---------- */
+  .page { padding-bottom:80px; }
+  .row { margin-top:38px; }
+  .row:first-child { margin-top:8px; }
+  .rowhead { display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin-bottom:14px; }
+  .rowhead h2 { margin:0; font-size:19px; letter-spacing:-.01em; }
+  .rowhead h2 small { color:var(--dim); font-weight:500; font-size:14px; margin-left:8px; }
+  .rowhead a { color:var(--muted); font-size:13px; display:inline-flex; align-items:center; gap:2px; }
+  .rowhead a:hover { color:var(--text); }
+  .rowhead a svg { width:15px; height:15px; }
+
+  .grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(176px, 1fr)); gap:26px 18px; }
+  .grid.wide { grid-template-columns:repeat(auto-fill, minmax(300px, 1fr)); gap:22px 18px; }
+  /* jedna posuvná řada: na mobilu prstem (snap po kartách), na PC šipkami / kolečkem se Shiftem */
+  .rail { display:grid; grid-auto-flow:column; grid-auto-columns:calc((100% - 3 * 18px) / 4); gap:18px; overflow-x:auto; overscroll-behavior-x:contain;
+          scroll-snap-type:x mandatory; scroll-behavior:smooth; scrollbar-width:none; padding:6px 0 12px; margin:-6px 0 -12px; }
+  .rail::-webkit-scrollbar { display:none; }
+  .rail > * { scroll-snap-align:start; min-width:0; }
+  @media (min-width:1700px) { .rail { grid-auto-columns:calc((100% - 4 * 18px) / 5); } }
+  @media (max-width:1100px) { .rail { grid-auto-columns:calc((100% - 2 * 18px) / 3); } }
+  @media (max-width:820px)  { .rail { grid-auto-columns:calc((100% - 18px) / 2); } }
+  @media (max-width:560px)  { .rail { grid-auto-columns:82%; gap:12px; } }
+  .arrows { display:flex; gap:6px; }
+  .arrows button { width:32px; height:32px; border-radius:50%; border:1px solid var(--line2); background:rgba(255,255,255,.05); color:var(--text); display:grid; place-items:center; cursor:pointer; transition:background .15s, opacity .15s; }
+  .arrows button:hover:not(:disabled) { background:rgba(255,255,255,.12); }
+  .arrows button:disabled { opacity:.3; cursor:default; }
+  .arrows button svg { width:16px; height:16px; }
+  .arrows button.prev svg { transform:rotate(180deg); }
+  .arrows.hide { display:none; }
+  @media (hover:none) { .arrows { display:none; } }
+
+  .card { display:block; min-width:0; }
+  .poster { position:relative; aspect-ratio:2/3; border-radius:10px; overflow:hidden; background:linear-gradient(160deg,#1f2430,#12151c); box-shadow:0 0 0 1px var(--line), 0 8px 24px rgba(0,0,0,.35); transition:transform .25s cubic-bezier(.2,.8,.2,1), box-shadow .25s; }
+  .poster img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; }
+  .poster .ph { position:absolute; inset:0; display:grid; place-items:center; font-size:34px; font-weight:700; color:#384052; }
+  .card:hover .poster { transform:translateY(-4px) scale(1.02); box-shadow:0 0 0 1px var(--line2), 0 18px 40px rgba(0,0,0,.55); }
+  .poster .ov { position:absolute; inset:auto 0 0 0; padding:40px 10px 10px; background:linear-gradient(0deg, rgba(0,0,0,.85), transparent); opacity:0; transition:opacity .2s; font-size:12px; color:#d6dae2; display:flex; gap:8px; align-items:center; }
+  .card:hover .poster .ov { opacity:1; }
+  .poster .ov .star { color:var(--warn); }
+  .badge { position:absolute; top:8px; right:8px; width:24px; height:24px; border-radius:50%; background:var(--ok); color:#06120c; display:grid; place-items:center; box-shadow:0 2px 8px rgba(0,0,0,.5); }
+  .badge svg { width:14px; height:14px; stroke-width:3; }
+  .count { position:absolute; top:8px; right:8px; min-width:24px; height:24px; padding:0 7px; border-radius:12px; background:var(--acc); color:#fff; font-size:12px; font-weight:700; display:grid; place-items:center; box-shadow:0 2px 8px rgba(0,0,0,.5); }
+  .card .t { font-weight:600; font-size:14px; margin-top:10px; line-height:1.3; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .card .s { color:var(--muted); font-size:12px; margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .pbar { height:3px; background:rgba(255,255,255,.12); border-radius:2px; overflow:hidden; }
+  .pbar div { height:100%; background:var(--acc); border-radius:2px; }
+  .pbar.ok div { background:var(--ok); }
+  .card > .pbar { margin-top:8px; }
+
+  /* 16:9 karty (pokračovat / naposledy přidané) */
+  .thumb { position:relative; aspect-ratio:16/9; border-radius:10px; overflow:hidden; background:linear-gradient(160deg,#1f2430,#12151c); box-shadow:0 0 0 1px var(--line), 0 8px 24px rgba(0,0,0,.35); transition:transform .25s cubic-bezier(.2,.8,.2,1), box-shadow .25s; }
+  .thumb > img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+  .thumb::after { content:""; position:absolute; inset:0; background:radial-gradient(120% 90% at 0% 100%, rgba(0,0,0,.7) 0%, transparent 60%), linear-gradient(0deg, rgba(0,0,0,.6) 0%, transparent 55%); }
+  .thumb .lg { position:absolute; left:14px; bottom:14px; z-index:1; max-width:55%; max-height:42%; object-fit:contain; object-position:left bottom; filter:drop-shadow(0 1px 2px rgba(0,0,0,.9)) drop-shadow(0 4px 14px rgba(0,0,0,.8)); }
+  .thumb .tx { position:absolute; left:14px; right:14px; bottom:12px; z-index:1; font-weight:700; font-size:17px; line-height:1.2; text-shadow:0 2px 10px rgba(0,0,0,.8); }
+  .thumb .pbar { position:absolute; left:12px; right:12px; bottom:10px; z-index:2; }
+  .thumb .play { position:absolute; inset:0; margin:auto; width:52px; height:52px; border-radius:50%; background:rgba(255,255,255,.92); color:#0a0c10; display:grid; place-items:center; z-index:2; opacity:0; transform:scale(.85); transition:opacity .2s, transform .2s; }
+  .thumb .play svg { width:22px; height:22px; fill:currentColor; stroke:none; margin-left:3px; }
+  .card:hover .thumb { transform:translateY(-4px) scale(1.015); box-shadow:0 0 0 1px var(--line2), 0 18px 40px rgba(0,0,0,.55); }
+  .card:hover .thumb .play { opacity:1; transform:scale(1); }
+  .new { position:absolute; top:10px; left:10px; z-index:2; font-size:11px; font-weight:700; letter-spacing:.04em; padding:3px 8px; border-radius:6px; background:var(--acc); color:#fff; }
+
+  /* ---------- stránka knihovny ---------- */
+  .lhead { display:flex; justify-content:space-between; align-items:flex-end; gap:16px; flex-wrap:wrap; padding-top:36px; margin-bottom:26px; }
+  .lhead h1 { margin:0; font-size:34px; letter-spacing:-.025em; line-height:1.1; }
+  .lhead .sub { color:var(--muted); font-size:14px; margin-top:6px; }
+  .tools { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  /* žánry nad mřížkou: na PC se zalamují, na mobilu jedna řada posouvaná prstem */
+  .genres { display:flex; flex-wrap:wrap; gap:8px; margin:-8px 0 24px; }
+  .genres button { display:inline-flex; align-items:center; gap:7px; height:32px; padding:0 13px; border-radius:999px; border:1px solid var(--line); background:rgba(255,255,255,.04); color:#c4c9d4; font:inherit; font-size:13px; cursor:pointer; transition:background .15s, border-color .15s, color .15s; }
+  .genres button small { font-size:11.5px; color:var(--dim); font-variant-numeric:tabular-nums; }
+  .genres button:hover { background:rgba(255,255,255,.09); color:var(--text); }
+  .genres button.on { background:var(--acc); border-color:var(--acc); color:#fff; }
+  .genres button.on small { color:rgba(255,255,255,.75); }
+  select.sel { height:36px; padding:0 40px 0 14px; border-radius:9px; border:1px solid var(--line); background:rgba(255,255,255,.05) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239aa3b2' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 14px center/14px; color:var(--text); font-size:13px; appearance:none; cursor:pointer; }
+  select.sel option { background:var(--card); }
+  .toggle { display:flex; align-items:center; gap:8px; font-size:13px; color:var(--muted); cursor:pointer; user-select:none; height:36px; padding:0 12px; border-radius:9px; border:1px solid var(--line); background:rgba(255,255,255,.05); }
+  .toggle input { display:none; }
+  .toggle .sw { width:28px; height:16px; border-radius:8px; background:rgba(255,255,255,.18); position:relative; transition:background .15s; }
+  .toggle .sw::after { content:""; position:absolute; top:2px; left:2px; width:12px; height:12px; border-radius:50%; background:#fff; transition:transform .15s; }
+  .toggle input:checked + .sw { background:var(--acc); }
+  .toggle input:checked + .sw::after { transform:translateX(12px); }
+  .toggle:has(input:checked) { color:var(--text); }
+
+  /* ---------- detail (film / seriál) ---------- */
+  .detail { position:relative; margin-top:calc(-1 * var(--hdr)); isolation:isolate; }
+  .detail .bdwrap { position:absolute; inset:0 0 auto 0; height:min(82vh, 760px); z-index:-1; overflow:hidden; }
+  .detail .bd { position:absolute; inset:0; background-size:cover; background-position:center 20%; }
+  .detail .bd.blur { filter:blur(40px) brightness(.5); transform:scale(1.25); }
+  .detail .bdwrap::after { content:""; position:absolute; inset:0; background:
+      linear-gradient(90deg, rgba(10,12,16,.97) 0%, rgba(10,12,16,.88) 38%, rgba(10,12,16,.45) 75%, rgba(10,12,16,.3) 100%),
+      linear-gradient(0deg, var(--bg) 2%, rgba(10,12,16,0) 60%); }
+  .detail .info { text-shadow:0 1px 12px rgba(0,0,0,.6); }
+  .detail .inner { display:flex; gap:40px; align-items:flex-end; padding-top:calc(var(--hdr) + clamp(60px, 16vh, 200px)); min-height:min(82vh, 760px); padding-bottom:40px; }
+  .detail .poster { width:230px; flex:none; }
+  .detail .poster:hover { transform:none; }
+  .detail .info { min-width:0; max-width:720px; padding-bottom:4px; }
+  .detail .crumb { font-size:13px; color:var(--muted); margin-bottom:14px; display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
+  .detail .crumb a:hover { color:var(--text); }
+  .detail .crumb svg { width:14px; height:14px; color:var(--dim); }
+  .detail .logo { display:block; max-width:min(420px, 100%); max-height:140px; object-fit:contain; object-position:left bottom; margin-bottom:16px; filter:drop-shadow(0 4px 24px rgba(0,0,0,.6)); }
+  .detail h1 { font-size:clamp(30px, 3.6vw, 48px); line-height:1.08; letter-spacing:-.03em; margin:0 0 14px; }
+  .detail p.ov { color:#cfd4dd; font-size:15px; line-height:1.65; margin:16px 0 0; }
+  .detail p.ov.clamp { display:-webkit-box; -webkit-line-clamp:4; -webkit-box-orient:vertical; overflow:hidden; cursor:pointer; }
+  .detail .acts { display:flex; gap:10px; flex-wrap:wrap; margin-top:24px; }
+  .detail .stat { display:flex; align-items:center; gap:12px; margin-top:18px; color:var(--muted); font-size:13px; }
+  .detail .stat .pbar { width:180px; }
+  .file { display:flex; align-items:center; gap:12px; margin-top:22px; padding:12px 14px; border-radius:10px; background:rgba(255,255,255,.04); border:1px solid var(--line); font-size:13px; color:var(--muted); min-width:0; }
+  .file b { color:var(--text); font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; min-width:0; }
+
+  /* série: záložky + díly */
+  .seasonbar { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin:6px 0 18px; }
+  .tabs { display:flex; gap:6px; flex-wrap:wrap; }
+  .tabs a { padding:7px 14px; border-radius:999px; font-size:14px; font-weight:500; color:var(--muted); background:rgba(255,255,255,.05); border:1px solid var(--line); display:flex; align-items:center; gap:8px; }
+  .tabs a:hover { color:var(--text); border-color:var(--line2); }
+  .tabs a.on { background:#fff; color:#0a0c10; border-color:#fff; }
+  .tabs a small { font-size:11px; opacity:.6; }
+  .tabs a .ck { width:14px; height:14px; color:var(--ok); stroke-width:3; }
+  .tabs a.on .ck { color:#178a55; }
+
+  .eps { display:flex; flex-direction:column; gap:4px; }
+  .ep { display:grid; grid-template-columns:44px 240px 1fr auto; gap:20px; align-items:center; padding:14px; border-radius:12px; transition:background .15s; }
+  .ep:hover { background:rgba(255,255,255,.04); }
+  .ep .no { font-size:22px; font-weight:700; color:var(--dim); text-align:center; font-variant-numeric:tabular-nums; }
+  .ep .thumb { border-radius:8px; }
+  .ep .thumb::after { display:none; }
+  .ep .thumb .pbar { left:8px; right:8px; bottom:7px; }
+  .ep .thumb .badge { top:6px; right:6px; width:22px; height:22px; }
+  .ep .tt { font-weight:600; font-size:15px; display:flex; gap:10px; align-items:baseline; }
+  .ep .tt span { color:var(--dim); font-weight:400; font-size:13px; white-space:nowrap; }
+  .ep .od { color:var(--muted); font-size:13.5px; line-height:1.55; margin-top:5px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  .ep .fn { color:var(--dim); font-size:12px; margin-top:5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .ep .side { display:flex; flex-direction:column; align-items:flex-end; justify-content:center; gap:8px; color:var(--dim); font-size:12px; white-space:nowrap; }
+  .ep .side .del { opacity:0; transition:opacity .15s; }
+  .ep:hover .side .del, .ep .side .del:focus { opacity:1; }
+  .ep.played .no { color:#3a4150; }
+
+  /* výsledky hledání */
+  .hits { display:flex; flex-direction:column; gap:2px; }
+  .hit { display:flex; align-items:center; gap:14px; padding:10px 12px; border-radius:10px; }
+  .hit:hover { background:rgba(255,255,255,.05); }
+  .hit .thumb { width:128px; flex:none; border-radius:6px; }
+  .hit .thumb::after { display:none; }
+  .hit .t { font-weight:600; font-size:14px; }
+  .hit .s { color:var(--muted); font-size:12px; }
+
+  /* ---------- panel stahování (vysouvací) ---------- */
+  .scrim { position:fixed; inset:0; z-index:40; background:rgba(5,7,10,.55); backdrop-filter:blur(2px); opacity:0; pointer-events:none; transition:opacity .25s; }
+  .drawer { position:fixed; top:0; right:0; bottom:0; z-index:41; width:min(560px, 100vw); background:var(--bg2); border-left:1px solid var(--line); box-shadow:-30px 0 80px rgba(0,0,0,.5);
+            transform:translateX(100%); transition:transform .3s cubic-bezier(.2,.8,.2,1); display:flex; flex-direction:column; }
+  body.dl-open .scrim { opacity:1; pointer-events:auto; }
+  body.dl-open .drawer { transform:none; }
+  .drawer .dh { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:18px 22px; border-bottom:1px solid var(--line); }
+  .drawer .dh h3 { margin:0; font-size:18px; }
+  .drawer .dh .s { color:var(--muted); font-size:13px; }
+  .drawer .db { flex:1; overflow:auto; padding:16px 22px 24px; }
+  .drawer .df { padding:14px 22px; border-top:1px solid var(--line); display:flex; align-items:center; gap:12px; font-size:12px; color:var(--muted); }
+  .drawer .df .meter { flex:1; height:6px; border-radius:3px; background:rgba(255,255,255,.08); overflow:hidden; }
+  .drawer .df .meter div { height:100%; background:linear-gradient(90deg,var(--acc2),var(--acc)); }
+  .drawer .df svg { width:16px; height:16px; color:var(--dim); }
+  .drawer .df a.lo { display:flex; align-items:center; gap:6px; } .drawer .df a { color:var(--dim); } .drawer .df a:hover { color:var(--text); }
+  .dsec { font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:.08em; color:var(--dim); margin:18px 0 10px; display:flex; justify-content:space-between; align-items:center; }
+  .dsec:first-child { margin-top:2px; }
+  .dsec button { all:unset; cursor:pointer; text-transform:none; letter-spacing:0; font-weight:500; color:var(--muted); font-size:12px; }
+  .dsec button:hover { color:var(--text); }
+  .dempty { text-align:center; color:var(--muted); padding:50px 10px; }
+  .dempty svg { width:40px; height:40px; color:var(--dim); margin-bottom:10px; stroke-width:1.4; }
+
+  .item { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-bottom:10px; }
+  .item .top { display:flex; justify-content:space-between; gap:12px; align-items:flex-start; }
+  .item .name { font-weight:600; font-size:14px; word-break:break-word; line-height:1.35; }
+  .item .dest { display:inline-flex; align-items:center; gap:5px; margin-top:4px; font-size:12px; color:var(--muted); }
+  .item .dest svg { width:14px; height:14px; }
+  .pill { font-size:12px; font-weight:500; padding:4px 11px; border-radius:999px; white-space:nowrap; background:rgba(62,207,142,.12); color:var(--ok); display:inline-flex; align-items:center; gap:6px; }
+  .pill::before { content:""; width:7px; height:7px; border-radius:50%; background:currentColor; }
+  .item.active .pill::before { animation:pulse 1.4s infinite; box-shadow:0 0 0 0 rgba(62,207,142,.6); animation:ping 1.6s infinite; }
+  @keyframes ping { 0% { box-shadow:0 0 0 0 rgba(62,207,142,.55); } 70%,100% { box-shadow:0 0 0 6px rgba(62,207,142,0); } }
+  .item.paused .pill { background:rgba(245,179,66,.14); color:var(--warn); }
+  .item.complete .pill { background:rgba(62,207,142,.14); color:var(--ok); }
+  .item.error .pill, .item.removed .pill { background:rgba(255,92,92,.14); color:var(--err); }
+  .item.waiting .pill { background:rgba(255,255,255,.07); color:var(--muted); }
+  .mid { display:flex; justify-content:space-between; align-items:flex-end; gap:16px; margin:16px 0 10px; flex-wrap:wrap; }
+  .pct { font-size:38px; font-weight:700; letter-spacing:-.03em; line-height:1; font-variant-numeric:tabular-nums; }
+  .pct small { font-size:18px; color:var(--muted); font-weight:600; }
+  .kv { display:flex; gap:22px; flex-wrap:wrap; }
+  .kv span { display:block; font-size:10.5px; text-transform:uppercase; letter-spacing:.06em; color:var(--dim); }
+  .kv b { font-size:14px; font-weight:600; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .kv b em { font-style:normal; color:var(--muted); font-weight:400; font-size:12px; }
+  .prog { height:8px; background:rgba(0,0,0,.4); border-radius:5px; overflow:hidden; }
+  .prog > div { height:100%; border-radius:5px; background:linear-gradient(90deg,#2fae75,var(--ok)); transition:width .8s ease; }
+  .item.active .prog > div { background-image:repeating-linear-gradient(-45deg, rgba(255,255,255,.12) 0 8px, transparent 8px 16px), linear-gradient(90deg,#2fae75,var(--ok)); background-size:23px 23px, 100% 100%; animation:stripes 1s linear infinite; }
+  @keyframes stripes { to { background-position:23px 0, 0 0; } }
+  .item.complete .prog > div { background:var(--ok); } .item.error .prog > div { background:var(--err); } .item.paused .prog > div { background:var(--warn); }
+  .chart { position:relative; margin-top:24px; height:84px; padding-right:66px; }
+  .chart svg { width:100%; height:100%; display:block; overflow:visible; }
+  .chart .lbl { position:absolute; font-size:10.5px; color:var(--dim); font-variant-numeric:tabular-nums; pointer-events:none; }
+  .chart .lbl.y { right:0; width:60px; transform:translateY(-50%); }
+  .chart .tip { position:absolute; top:-8px; transform:translate(-50%,-100%); background:#07090c; border:1px solid var(--line2); border-radius:8px; padding:4px 9px; font-size:12px; white-space:nowrap; pointer-events:none; }
+  .chart .tip b { font-variant-numeric:tabular-nums; } .chart .tip span { color:var(--muted); margin-left:6px; }
+  .chart .nodata { position:absolute; inset:0; display:grid; place-items:center; font-size:12px; color:var(--dim); }
+  .foot { display:flex; justify-content:space-between; align-items:center; gap:8px; margin-top:28px; font-size:12px; color:var(--muted); flex-wrap:wrap; }
+  .foot .actions { display:flex; gap:6px; }
+  .item.small { padding:12px 14px; display:flex; align-items:center; gap:12px; }
+  .item.small .sic { width:30px; height:30px; border-radius:8px; display:grid; place-items:center; flex:none; background:rgba(62,207,142,.12); color:var(--ok); }
+  .item.small.error .sic, .item.small.removed .sic { background:rgba(255,92,92,.12); color:var(--err); }
+  .item.small .sic svg { width:16px; height:16px; stroke-width:2.4; }
+  .item.small .main { flex:1; min-width:0; }
+  .item.small .name { font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .item.small .dest { margin-top:1px; }
+  .item.small .err { color:var(--err); font-size:12px; }
+  /* archiv: čeká na části / rozbaluje / heslo / chyba */
+  .item.small.x-waiting .sic, .item.small.x-running .sic { background:rgba(79,140,255,.14); color:var(--acc); }
+  .item.small.x-running .sic { animation:xpulse 1.4s ease-in-out infinite; }
+  .item.small.x-password .sic { background:rgba(245,177,66,.14); color:var(--warn); }
+  .item.small.x-error .sic { background:rgba(255,92,92,.12); color:var(--err); }
+  .item.small .xmsg { font-size:12px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .item.small.x-password .xmsg { color:var(--warn); }
+  .item.small.x-error .xmsg { color:var(--err); white-space:normal; }
+  @keyframes xpulse { 50% { opacity:.45; } }
+  dialog .dic.warn { background:rgba(245,177,66,.14); color:var(--warn); }
+  dialog .pwin { width:100%; margin-top:12px; box-sizing:border-box; }
+
+  /* ---------- oprava rozpoznání ---------- */
+  .warnbox { display:flex; gap:12px; align-items:center; margin-top:18px; padding:12px 14px; border-radius:12px; background:rgba(245,179,66,.1); border:1px solid rgba(245,179,66,.3); font-size:13.5px; color:#f0d9ad; text-shadow:none; }
+  .warnbox > svg { color:var(--warn); width:20px; height:20px; }
+  .warnbox div { flex:1; min-width:0; } .warnbox b { color:#fbe7c0; display:block; }
+  .warnbox .btn { flex:none; }
+  .qmark { position:absolute; top:8px; right:8px; width:24px; height:24px; border-radius:50%; background:var(--warn); color:#1d1404; display:grid; place-items:center; font-weight:800; font-size:13px; box-shadow:0 2px 8px rgba(0,0,0,.5); }
+  dialog#ident { width:min(720px, calc(100vw - 32px)); max-height:min(86vh, 900px); }
+  dialog#ident[open] { display:flex; flex-direction:column; }
+  #ident .ih { padding:20px 22px 14px; border-bottom:1px solid var(--line); }
+  #ident .ih h4 { margin:0 0 4px; font-size:17px; display:flex; align-items:center; gap:10px; }
+  #ident .ih h4 svg { color:var(--acc); }
+  #ident .ih .f { color:var(--dim); font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  #ident form.q { display:flex; gap:8px; margin-top:14px; }
+  #ident form.q input, dialog .pwin { height:40px; padding:0 12px; border-radius:10px; border:1px solid var(--line2); background:rgba(0,0,0,.3); color:var(--text); font-size:14px; outline:none; font-family:inherit; }
+  #ident form.q input:focus, dialog .pwin:focus { border-color:rgba(79,140,255,.7); }
+  #ident form.q input[name=name] { flex:1; min-width:0; }
+  #ident form.q input[name=year] { width:90px; }
+  #ident .ires { overflow:auto; padding:10px 12px 14px; flex:1; min-height:120px; }
+  #ident .ir { display:flex; gap:14px; padding:10px; border-radius:12px; cursor:pointer; border:1px solid transparent; transition:background .15s, border-color .15s; }
+  #ident .ir:hover { background:rgba(255,255,255,.05); border-color:var(--line); }
+  #ident .ir .pp { width:70px; flex:none; aspect-ratio:2/3; border-radius:7px; overflow:hidden; background:linear-gradient(160deg,#1f2430,#12151c); }
+  #ident .ir .pp img { width:100%; height:100%; object-fit:cover; display:block; }
+  #ident .ir .bd { min-width:0; flex:1; }
+  #ident .ir .nm { font-weight:600; font-size:15px; } #ident .ir .nm span { color:var(--muted); font-weight:400; margin-left:6px; }
+  #ident .ir .src { font-size:11.5px; color:var(--dim); margin-top:2px; }
+  #ident .ir .ov { font-size:13px; color:var(--muted); line-height:1.5; margin-top:6px; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
+  #ident .ir .go { align-self:center; flex:none; opacity:0; transition:opacity .15s; }
+  #ident .ir:hover .go { opacity:1; }
+  #ident .imsg { text-align:center; color:var(--muted); padding:40px 10px; font-size:14px; }
+  #ident .if { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:12px 22px; border-top:1px solid var(--line); font-size:12px; color:var(--dim); }
+  @media (max-width:560px) { #ident .ir .go { opacity:1; } #ident .if span { display:none; } }
+
+  /* ---------- objevit + wishlist ---------- */
+  .card.tm { cursor:pointer; }
+  .wbtn { position:absolute; top:7px; left:7px; z-index:2; width:26px; height:26px; border-radius:50%; border:0; display:grid; place-items:center; cursor:pointer;
+          background:rgba(10,12,16,.45); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); color:#fff; opacity:0; transition:opacity .15s, transform .15s, background .15s; }
+  .wbtn svg { width:15px; height:15px; }
+  .wbtn:hover { transform:scale(1.1); background:rgba(10,12,16,.7); }
+  .wbtn.on { opacity:1; color:var(--heart); } .wbtn.on svg { fill:currentColor; }
+  .card:hover .wbtn, .wbtn:focus-visible { opacity:1; }
+  @media (hover:none) { .wbtn { opacity:1; } }
+  .have { position:absolute; top:8px; right:8px; z-index:2; font-size:11px; font-weight:700; padding:3px 8px; border-radius:6px; background:var(--ok); color:#06120c; display:flex; align-items:center; gap:4px; box-shadow:0 2px 8px rgba(0,0,0,.5); }
+  .have svg { width:12px; height:12px; stroke-width:3; }
+  .avail { position:absolute; left:8px; right:8px; bottom:8px; z-index:2; display:flex; justify-content:center; }
+  .avail span { font-size:11px; font-weight:600; padding:3px 8px; border-radius:6px; background:rgba(10,12,16,.78); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .avail span.top { background:rgba(62,207,142,.92); color:#06120c; }
+  .avail span.ok { color:#cfe0ff; }
+  .card.tm .poster .new { top:auto; bottom:36px; left:8px; background:var(--heart); }
+  .navcnt { min-width:17px; height:17px; padding:0 5px; border-radius:9px; background:var(--heart); color:#fff; font-size:10.5px; font-weight:700; display:none; place-items:center; line-height:1; }
+  .navcnt.on { display:inline-grid; }
+  .tabbar .navcnt { position:absolute; top:2px; left:calc(50% + 6px); }
+  .tabbar a { position:relative; }
+  .dtools { display:flex; flex-direction:column; gap:14px; margin:-8px 0 24px; }
+  .dtools .line { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .dtools .genres { margin:0; }
+  .dtools .seg { background:rgba(255,255,255,.05); border:1px solid var(--line); height:36px; align-items:center; padding:2px; border-radius:9px; }
+  .dtools .seg button { height:30px; padding:0 12px; font-size:13px; }
+  .tsearch { position:relative; flex:1; min-width:200px; max-width:420px; }
+  .tsearch svg { position:absolute; left:11px; top:9px; color:var(--dim); pointer-events:none; }
+  .tsearch input { width:100%; height:36px; padding:0 12px 0 36px; border-radius:9px; border:1px solid var(--line); background:rgba(255,255,255,.05); color:var(--text); font-size:13.5px; outline:none; }
+  .tsearch input:focus { border-color:rgba(79,140,255,.6); }
+  .more { display:flex; justify-content:center; margin-top:34px; }
+  .tmdbnote { margin-top:40px; font-size:11.5px; color:var(--dim); text-align:center; }
+
+  dialog#tm { width:min(820px, calc(100vw - 32px)); max-height:min(90vh, 960px); }
+  dialog#tm[open] { display:flex; flex-direction:column; }
+  #tm .th { flex:none; position:relative; display:flex; gap:20px; padding:22px; border-bottom:1px solid var(--line); overflow:hidden; isolation:isolate; }
+  #tm .th .bg { position:absolute; inset:0; z-index:-1; background-size:cover; background-position:center 25%; opacity:.22; }
+  #tm .th .bg::after { content:""; position:absolute; inset:0; background:linear-gradient(90deg, var(--card) 15%, transparent); }
+  #tm .th .poster { width:120px; flex:none; }
+  #tm .th .poster:hover { transform:none; }
+  #tm .th h4 { margin:0 0 8px; font-size:22px; letter-spacing:-.02em; line-height:1.15; }
+  #tm .th .orig { color:var(--muted); font-size:13px; margin:-4px 0 8px; }
+  #tm .th .ov { color:#cfd4dd; font-size:13.5px; line-height:1.55; margin:10px 0 0; display:-webkit-box; -webkit-line-clamp:4; -webkit-box-orient:vertical; overflow:hidden; }
+  #tm .th .acts { display:flex; gap:8px; flex-wrap:wrap; margin-top:14px; }
+  #tm > .x { position:absolute; top:12px; right:12px; z-index:3; }
+  /* otevřené okno zamkne stránku pod sebou (jinak se na mobilu posouvá obsah pod oknem) */
+  html:has(dialog[open]) { overflow:hidden; }
+  dialog, #tm .tf { overscroll-behavior:contain; }
+  .btn.heart.on { color:var(--heart); border-color:rgba(255,79,94,.4); } .btn.heart.on svg { fill:currentColor; }
+  #tm .tf { overflow:auto; flex:1; min-height:140px; padding:6px 12px 14px; }
+  #tm .tf .fh { display:flex; justify-content:space-between; align-items:baseline; gap:10px; padding:12px 10px 6px; font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:.08em; color:var(--dim); }
+  #tm .tf .fh span { text-transform:none; letter-spacing:0; font-weight:400; }
+  #tm .tf .fh { flex-wrap:wrap; align-items:center; }
+  #tm .tf .fh .fhl { display:flex; align-items:center; flex-wrap:wrap; gap:6px 14px; text-transform:uppercase; letter-spacing:.08em; font-weight:600; }
+  #tm .ext { display:inline-flex; align-items:center; gap:6px; text-transform:none; letter-spacing:0; font-weight:400; font-size:12px; color:var(--dim); }
+  #tm .ext a { display:inline-flex; align-items:center; height:26px; padding:0 10px; border-radius:8px; border:1px solid var(--line2); background:rgba(255,255,255,.06); color:var(--text); font-weight:500; }
+  #tm .ext a:hover { background:rgba(255,255,255,.11); }
+  #tm .tmsg .ext { margin-top:14px; }
+  .fr { display:flex; align-items:center; gap:12px; padding:10px; border-radius:10px; }
+  .fr:hover { background:rgba(255,255,255,.04); }
+  .fr.best { background:rgba(62,207,142,.07); box-shadow:inset 0 0 0 1px rgba(62,207,142,.25); }
+  .fr .chips { display:flex; gap:5px; flex:none; width:178px; flex-wrap:wrap; align-items:center; }
+  .chip { font-size:11px; font-weight:700; padding:3px 7px; border-radius:6px; background:rgba(255,255,255,.08); color:var(--muted); white-space:nowrap; }
+  .chip.q4 { background:rgba(245,179,66,.16); color:var(--warn); }
+  .chip.q2 { background:rgba(79,140,255,.16); color:#9cbcff; }
+  .chip.l2 { background:rgba(62,207,142,.14); color:var(--ok); }
+  .chip.l1 { background:rgba(62,207,142,.08); color:#8fd9b6; }
+  .chip.epn { background:rgba(255,255,255,.12); color:var(--text); }
+  .fr .fn { flex:1; min-width:0; font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#d6dae2; }
+  .fr .fn small { display:block; color:var(--ok); font-size:11.5px; font-weight:600; }
+  .fr .sz { color:var(--muted); font-size:12.5px; white-space:nowrap; font-variant-numeric:tabular-nums; }
+  #tm .tmsg { text-align:center; color:var(--muted); padding:36px 10px; font-size:14px; }
+  #tm .tmtabs { padding:4px 10px 6px; }
+  #tm .tmtabs a { padding:5px 12px; font-size:13px; }
+  #tm .sbar { display:flex; justify-content:space-between; align-items:center; gap:8px 14px; flex-wrap:wrap; padding:8px 10px 10px; color:var(--muted); font-size:13px; }
+  #tm .sbar b { color:var(--text); font-weight:600; }
+  #tm .sbar .dim { color:var(--dim); font-size:12px; }
+  #tm .sbar .ok { display:inline-flex; align-items:center; gap:6px; color:var(--ok); }
+  #tm .sbar .back { display:inline-flex; align-items:center; gap:4px; color:var(--text); }
+  #tm .sbar .back svg { transform:rotate(180deg); width:15px; height:15px; }
+  #tm .epq { display:flex; gap:6px; text-transform:none; letter-spacing:0; font-weight:400; }
+  #tm .epq input { width:150px; height:32px; padding:0 10px; border-radius:8px; border:1px solid var(--line); background:rgba(255,255,255,.05); color:var(--text); font-size:13px; outline:none; }
+  #tm .epq input:focus { border-color:var(--line2); }
+  .chip svg { width:11px; height:11px; vertical-align:-1px; margin-right:3px; stroke-width:3; }
+  .fr .fn small.pk { color:var(--dim); font-weight:500; }
+  @media (max-width:560px) {
+    .dtools .genres { margin:0 -16px; }
+    #tm .th { flex-direction:column; gap:12px; padding:18px; } #tm .th .poster { width:90px; }
+    /* mobil: detail přes celou obrazovku, posouvá se celý najednou, křížek zůstává nahoře */
+    dialog#tm { width:100%; max-width:100%; height:100dvh; max-height:100dvh; margin:0; border:0; border-radius:0; overflow-y:auto; }
+    dialog#tm[open] { display:block; }
+    #tm .tf { overflow:visible; min-height:0; padding-bottom:calc(14px + env(safe-area-inset-bottom)); }
+    #tm > .x { position:fixed; top:calc(10px + env(safe-area-inset-top)); right:10px; width:40px; height:40px; background:rgba(10,12,16,.72); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); }
+    #tm .th h4 { padding-right:44px; }
+    .fr { flex-wrap:wrap; gap:6px 10px; } .fr .chips { width:auto; } .fr .fn { flex-basis:100%; order:3; white-space:normal; word-break:break-word; }
+    .fr .sz { margin-left:auto; }
+  }
+
+  /* ---------- dialog, toast, prázdné stavy ---------- */
+  dialog { border:1px solid var(--line2); border-radius:16px; background:var(--card); color:var(--text); padding:0; width:min(420px, calc(100vw - 32px)); box-shadow:0 20px 60px rgba(0,0,0,.6); }
+  dialog form { display:block; }
+  dialog::backdrop { background:rgba(5,7,10,.65); backdrop-filter:blur(3px); }
+  dialog .dbody { padding:22px 22px 18px; display:flex; gap:14px; }
+  dialog .dic { width:40px; height:40px; flex:none; border-radius:12px; background:rgba(255,92,92,.12); color:var(--err); display:grid; place-items:center; }
+  dialog .dic svg { width:22px; height:22px; }
+  dialog h4 { margin:2px 0 6px; font-size:17px; }
+  dialog .what { font-weight:600; word-break:break-word; }
+  dialog .note { color:var(--muted); font-size:13px; margin-top:6px; }
+  dialog .dfoot { display:flex; justify-content:flex-end; gap:8px; padding:14px 22px; border-top:1px solid var(--line); background:rgba(0,0,0,.2); border-radius:0 0 16px 16px; }
+  dialog .dfoot .del-yes { background:var(--err); border-color:var(--err); color:#fff; font-weight:600; }
+  dialog .dfoot .del-yes:hover { background:#e64545; }
+  .toast { position:fixed; left:50%; bottom:28px; transform:translateX(-50%); width:max-content; max-width:min(520px, calc(100vw - 32px)); background:rgba(26,31,42,.92); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); border:1px solid var(--line2); border-radius:14px; padding:12px 16px 12px 12px; font-size:14px; box-shadow:0 18px 50px rgba(0,0,0,.55); z-index:60; display:flex; gap:12px; align-items:center; animation:tin .25s ease; }
+  .toast .tic { width:34px; height:34px; flex:none; border-radius:10px; display:grid; place-items:center; background:rgba(62,207,142,.12); color:var(--ok); }
+  .toast.err .tic { background:rgba(255,92,92,.12); color:var(--err); }
+  .toast .tt { min-width:0; }
+  .toast .tt b { display:block; font-weight:600; font-size:13.5px; }
+  .toast .tt span { display:block; color:var(--muted); font-size:12.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  @keyframes tin { from { opacity:0; transform:translate(-50%, 10px); } }
+  .empty { color:var(--muted); text-align:center; padding:70px 0; }
+  .empty a { color:var(--acc); }
+  .hintcard { border:1px dashed var(--line2); border-radius:var(--r); padding:26px; color:var(--muted); text-align:center; font-size:14px; }
+  .skel { height:68vh; background:linear-gradient(90deg, #0f1218, #141821, #0f1218); background-size:200% 100%; animation:sk 1.4s infinite; margin-top:calc(-1 * var(--hdr)); }
+  @keyframes sk { to { background-position:-200% 0; } }
+
+  /* ---------- menší obrazovky ---------- */
+  @media (max-width:1100px) {
+    /* úzké PC/tablet: navigace jen ikonami (název v title) */
+    nav.main a { font-size:0; gap:0; padding:8px 10px; }
+    nav.main a svg { width:18px; height:18px; }
+    .search input { width:150px; } .search input:focus { width:190px; }
+  }
+  @media (max-width:820px) {
+    :root { --hdr:112px; }
+    nav.main { display:none; }
+    .tabbar { display:grid; grid-template-columns:repeat(6, 1fr); position:fixed; left:0; right:0; bottom:0; z-index:30;
+      padding:6px 8px calc(6px + env(safe-area-inset-bottom)); background:rgba(10,12,16,.86); backdrop-filter:blur(16px) saturate(1.4); -webkit-backdrop-filter:blur(16px) saturate(1.4); border-top:1px solid var(--line); }
+    .tabbar a, .tabbar button { display:flex; flex-direction:column; align-items:center; gap:3px; padding:6px 0 4px; border:0; background:none; color:var(--dim); font:inherit; font-size:10.5px; white-space:nowrap; font-weight:600; border-radius:10px; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+    .tabbar svg { width:22px; height:22px; }
+    .tabbar a.on, .tabbar button.on { color:var(--text); }
+    .tabbar a.on svg, .tabbar button.on svg { color:var(--acc); }
+    body { padding-bottom:calc(68px + env(safe-area-inset-bottom)); }
+    .toast { bottom:calc(84px + env(safe-area-inset-bottom)); }
+    /* hledání: schované, „Hledat“ dole ho otevře jako celý řádek pod lištou na odkazy */
+    .hright { display:contents; }                       /* hledání i tlačítko stahování jako přímé položky lišty */
+    .dlbtn { margin-left:auto; }
+    .search { display:none; order:2; flex-basis:100%; }
+    body.msearch { --hdr:158px; }                       /* o řádek vyšší lišta → proužek stahování pod ní */
+    body.msearch .search { display:flex; }
+    body.msearch .search input, body.msearch .search input:focus { width:100%; }
+    header.top { flex-wrap:wrap; height:auto; min-height:var(--hdr); padding-top:10px; padding-bottom:10px; gap:10px 12px; align-content:center; }
+    .hright { margin-left:auto; }
+    form.add { order:3; flex-basis:100%; max-width:none; }
+    .detail .inner { flex-direction:column; align-items:flex-start; gap:22px; padding-top:calc(var(--hdr) + 40px); min-height:0; }
+    .detail .poster { width:140px; }
+    .ep { grid-template-columns:150px 1fr; gap:6px 14px; padding:10px 6px; }
+    .ep .no { display:none; }
+    .ep .thumb { grid-row:span 2; }
+    .ep .side { flex-direction:row; align-items:center; justify-content:flex-start; grid-column:2; }
+    .ep .side .del { opacity:1; }
+    .ep .od { -webkit-line-clamp:2; }
+  }
+  @media (max-width:560px) {
+    .seg button span { display:none; }
+    .grid { grid-template-columns:repeat(auto-fill, minmax(124px, 1fr)); gap:20px 12px; }
+    .grid.wide { grid-template-columns:1fr; }
+    .hero .dots { display:none; }
+    .lhead h1 { font-size:28px; }
+    .genres { flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; margin-left:-16px; margin-right:-16px; padding:0 16px; }
+    .genres::-webkit-scrollbar { display:none; }
+    .genres button { flex:none; }
+    /* série: jeden posuvný řádek místo 4 řádků pilulek; okraj zeslabený = jde posouvat */
+    .seasonbar .tabs { position:relative; flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; margin:0 -16px; padding:0 16px; scroll-padding:0 16px;
+      -webkit-mask-image:linear-gradient(90deg, #000 calc(100% - 28px), transparent); mask-image:linear-gradient(90deg, #000 calc(100% - 28px), transparent); }
+    .seasonbar .tabs::-webkit-scrollbar { display:none; }
+    .seasonbar .tabs.end { -webkit-mask-image:none; mask-image:none; }
+    .seasonbar .tabs a { flex:none; padding:6px 12px; font-size:13.5px; }
+    .ep { grid-template-columns:120px 1fr; }
+    .ep .fn { display:none; }
+    .strip .st span:not(:first-child) { display:none; }
+  }
+  @media (prefers-reduced-motion:reduce) { *, *::before, *::after { animation:none !important; transition:none !important; } html { scroll-behavior:auto; } }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute">
+  <!-- ikony ve stylu Lucide (ISC licence): jednotná tloušťka 1.75, zaoblené konce -->
+  <symbol id="i-film" viewBox="0 0 24 24"><path d="M20.2 6 3 11l-.9-2.4c-.3-1.1.3-2.2 1.3-2.5l13.5-4c1.1-.3 2.2.3 2.5 1.3Z"/><path d="m6.2 5.3 3.1 3.9M12.4 3.4l3.1 4"/><path d="M3 11h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></symbol>
+  <symbol id="i-tv" viewBox="0 0 24 24"><rect width="20" height="15" x="2" y="7" rx="2.5"/><path d="m17 2-5 5-5-5"/></symbol>
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9"/><path d="M10 21v-6h4v6"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-check-c" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m8.5 12 2.5 2.5 4.5-5"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+  <symbol id="i-dl" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M3 15v4a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-4"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7.5"/><path d="m21 21-4.3-4.3"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M6 4.8v14.4a1.3 1.3 0 0 0 2 1.1l11.4-7.2a1.3 1.3 0 0 0 0-2.2L8 3.7a1.3 1.3 0 0 0-2 1.1Z"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16" rx="1.2"/><rect x="14" y="4" width="4" height="16" rx="1.2"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="m10 11 5 3-5 3Z"/></symbol>
+  <symbol id="i-disk" viewBox="0 0 24 24"><path d="M22 12H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11Z"/><path d="M6 16h.01M10 16h.01"/></symbol>
+  <symbol id="i-logout" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5M21 12H9"/></symbol>
+  <symbol id="i-star" viewBox="0 0 24 24"><path d="M11.5 2.3a.55.55 0 0 1 1 0l2.3 4.7a2.1 2.1 0 0 0 1.6 1.2l5.2.7a.55.55 0 0 1 .3.9l-3.7 3.7a2.1 2.1 0 0 0-.6 1.9l.9 5.1a.55.55 0 0 1-.8.6l-4.6-2.4a2.1 2.1 0 0 0-2 0l-4.6 2.4a.55.55 0 0 1-.8-.6l.9-5.1a2.1 2.1 0 0 0-.6-1.9L2.2 9.8a.55.55 0 0 1 .3-.9l5.2-.7a2.1 2.1 0 0 0 1.6-1.2Z"/></symbol>
+  <symbol id="i-wand" viewBox="0 0 24 24"><path d="m21.6 3.6-1.2-1.2a1.2 1.2 0 0 0-1.7 0L2.4 18.6a1.2 1.2 0 0 0 0 1.7l1.2 1.2a1.2 1.2 0 0 0 1.7 0L21.6 5.4a1.2 1.2 0 0 0 0-1.8Z"/><path d="m14 7 3 3M5 6v4M19 14v4M10 2v2M7 8H3M21 16h-4M11 3H9"/></symbol>
+  <symbol id="i-heart" viewBox="0 0 24 24"><path d="M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7Z"/></symbol>
+  <symbol id="i-compass" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16.2 7.8-2.1 6.3-6.3 2.1 2.1-6.3Z"/></symbol>
+  <symbol id="i-sort" viewBox="0 0 24 24"><path d="m3 16 4 4 4-4M7 20V4M21 8l-4-4-4 4M17 4v16"/></symbol>
+</svg>
+
+<header class="top" id="hdr">
+  <a class="brand" href="#/" title="Úvod"><img src="/favicon.svg" alt=""><span>Stahovač</span></a>
+  <nav class="main" id="nav"><a href="#/" data-r="" title="Úvod"><svg class="i"><use href="#i-home"/></svg>Úvod</a><a href="#/serialy" data-r="serialy" title="Seriály"><svg class="i"><use href="#i-tv"/></svg>Seriály</a><a href="#/filmy" data-r="filmy" title="Filmy"><svg class="i"><use href="#i-film"/></svg>Filmy</a><a href="#/objevit" data-r="objevit" title="Objevit nové filmy a seriály"><svg class="i"><use href="#i-compass"/></svg>Objevit</a><a href="#/wishlist" data-r="wishlist" title="Wishlist"><svg class="i"><use href="#i-heart"/></svg>Wishlist<span class="navcnt" title="nově ve 4K"></span></a></nav>
+  <form class="add" id="f">
+    <svg class="i"><use href="#i-link"/></svg>
+    <input type="text" id="url" placeholder="Vlož odkaz z Webshare nebo Fastshare (i víc najednou)…" autocomplete="off" required>
+    <div class="seg" id="target" role="radiogroup">
+      <button type="button" data-v="filmy" class="on" title="Uložit do Filmů"><svg class="i"><use href="#i-film"/></svg><span>Film</span></button>
+      <button type="button" data-v="serialy" title="Uložit do Seriálů (podle SxxEyy)"><svg class="i"><use href="#i-tv"/></svg><span>Seriál</span></button>
+    </div>
+    <button class="btn primary" id="btn" type="submit">Stáhnout</button>
+  </form>
+  <div class="hright">
+    <label class="search"><svg class="i"><use href="#i-search"/></svg><input type="search" id="q" placeholder="Hledat…" autocomplete="off"></label>
+    <button class="btn icon dlbtn" id="dlbtn" title="Stahování"><span class="ring"></span><svg class="i"><use href="#i-dl"/></svg><span class="badge" id="dlcount">0</span></button>
+  </div>
+</header>
+<div class="strip" id="strip"><button id="stripbtn"></button></div>
+<nav class="tabbar" id="tabbar">
+  <a href="#/" data-r=""><svg class="i"><use href="#i-home"/></svg>Úvod</a>
+  <a href="#/serialy" data-r="serialy"><svg class="i"><use href="#i-tv"/></svg>Seriály</a>
+  <a href="#/filmy" data-r="filmy"><svg class="i"><use href="#i-film"/></svg>Filmy</a>
+  <a href="#/objevit" data-r="objevit"><svg class="i"><use href="#i-compass"/></svg>Objevit</a>
+  <a href="#/wishlist" data-r="wishlist"><svg class="i"><use href="#i-heart"/></svg>Wishlist<span class="navcnt"></span></a>
+  <button type="button" id="tsearch"><svg class="i"><use href="#i-search"/></svg>Hledat</button>
+</nav>
+
+<main id="view"><div class="skel"></div></main>
+
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" aria-label="Stahování">
+  <div class="dh"><div><h3>Stahování</h3><div class="s" id="dlstate">—</div></div><button class="btn icon" id="dlclose" title="Zavřít"><svg class="i"><use href="#i-x"/></svg></button></div>
+  <div class="db" id="list"></div>
+  <div class="df"><svg class="i"><use href="#i-disk"/></svg><span id="disktxt">—</span><div class="meter"><div id="diskbar" style="width:0"></div></div><a href="/logout" class="lo" id="logout" title="Odhlásit"><svg class="i"><use href="#i-logout"/></svg>Odhlásit</a></div>
+</aside>
+
+<dialog id="confirm">
+  <form method="dialog">
+    <div class="dbody"><div class="dic"><svg class="i"><use href="#i-trash"/></svg></div>
+      <div><h4 id="ctitle">Opravdu smazat?</h4><div class="what" id="cwhat"></div><div class="note" id="cnote"></div></div></div>
+    <div class="dfoot"><button class="btn" value="no" id="cno">Zrušit</button><button class="btn del-yes" value="yes" id="cyes">Smazat</button></div>
+  </form>
+</dialog>
+
+<dialog id="pwdlg">
+  <form method="dialog" id="pwform">
+    <div class="dbody"><div class="dic warn"><svg class="i"><use href="#i-file"/></svg></div>
+      <div style="flex:1;min-width:0"><h4>Heslo k archivu</h4><div class="what" id="pwwhat"></div>
+        <div class="note">Heslo bývá v popisu souboru na Webshare / Fastshare.</div>
+        <input type="password" id="pwin" class="pwin" placeholder="Heslo" autocomplete="off"></div></div>
+    <div class="dfoot"><button class="btn" value="no" formnovalidate>Zrušit</button><button class="btn primary" value="yes">Rozbalit</button></div>
+  </form>
+</dialog>
+
+<dialog id="ident">
+  <div class="ih"><h4><svg class="i"><use href="#i-wand"/></svg>Opravit rozpoznání</h4><div class="f" id="ifile"></div>
+    <form class="q" id="iq"><input name="name" placeholder="Název (česky nebo originál)" autocomplete="off" required><input name="year" placeholder="Rok" inputmode="numeric" maxlength="4" autocomplete="off"><button class="btn primary" type="submit"><svg class="i"><use href="#i-search"/></svg>Hledat</button></form></div>
+  <div class="ires" id="ires"></div>
+  <div class="if"><span>Vyber správný titul, Jellyfin stáhne popis, plakát, backdrop i logo.</span><button class="btn sm" id="iclose">Zavřít</button></div>
+</dialog>
+
+<dialog id="tm"><button class="btn icon sm x" id="tmx" title="Zavřít"><svg class="i"><use href="#i-x"/></svg></button><div class="th" id="tmh"></div><div class="tf" id="tmf"></div></dialog>
+
+<script>
+const $ = s => document.querySelector(s);
+const ic = (n, cls='i') => `<svg class="${cls}"><use href="#i-${n}"/></svg>`;
+const fmtB = b => { if(!b) return '0 B'; const u=['B','KB','MB','GB','TB']; let i=0; while(b>=1024&&i<u.length-1){b/=1024;i++;} return b.toFixed(i>=3?1:0)+' '+u[i]; };
+const fmtT = s => { if(s==null) return ''; if(s<60) return s+' s'; if(s<3600) return Math.floor(s/60)+' min'; return Math.floor(s/3600)+' h '+Math.floor(s%3600/60)+' min'; };
+const fmtMin = m => m >= 60 ? `${Math.floor(m/60)} h ${m%60} min` : `${m} min`;
+const esc = x => String(x??'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const norm = s => String(s??'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
+const plural = (n, one, few, many) => n===1 ? one : (n>=2&&n<=4 ? few : many);
+const pad = n => String(n).padStart(2,'0');
+const coll = new Intl.Collator('cs', {numeric:true});
+let ADMIN = false, ME = '';                         // doplní /api/me
+let IMGV = {};                                       // jellyfinId → verze obrázků (mění se po opravě rozpoznání)
+const img = (id, type='Primary') => `/api/img/${esc(id)}?type=${type}${IMGV[id] ? '&v=' + IMGV[id] : ''}`;
+let JF_URL = '';                                      // doplní /api/me (JELLYFIN_PUBLIC_URL), jinak stejný počítač :8096
+const jfLink = id => `${JF_URL || `${location.protocol}//${location.hostname}:8096`}/web/#/details?id=${encodeURIComponent(id)}`;
+function ago(sec){
+  // kalendářní dny (včera 23:00 je „včera“, ne „dnes“)
+  const day = t => { const x = new Date(t); x.setHours(0,0,0,0); return x.getTime(); };
+  const d = Math.round((day(Date.now()) - day(sec*1000)) / 86400000);
+  return d <= 0 ? 'dnes' : d === 1 ? 'včera' : d < 7 ? `před ${d} ${plural(d,'dnem','dny','dny')}` : d < 30 ? `před ${Math.floor(d/7)} ${plural(Math.floor(d/7),'týdnem','týdny','týdny')}` : new Date(sec*1000).toLocaleDateString('cs-CZ');
+}
+
+/* ---------- hlavička ---------- */
+addEventListener('scroll', () => $('#hdr').classList.toggle('scrolled', scrollY > 8), {passive:true});
+let TARGET = 'filmy';
+function setTarget(v){ TARGET = v; document.querySelectorAll('#target button').forEach(b => b.classList.toggle('on', b.dataset.v===v)); }
+$('#target').addEventListener('click', e => { const b = e.target.closest('button'); if(b) setTarget(b.dataset.v); });
+$('#url').addEventListener('input', e => {             // odkaz s S01E02 → nejspíš seriál
+  if(/s\d{1,2}[ ._-]?e\d{1,3}|[._-]\d{1,2}e\d{1,3}[._-]/i.test(e.target.value)) setTarget('serialy');   // i Fastshare „-08e05-“
+});
+$('#f').addEventListener('submit', async e => {
+  e.preventDefault();
+  const btn = $('#btn'); btn.disabled = true; btn.textContent = 'Zjišťuji…';
+  // Víc odkazů najednou (archiv po částech): prohlížeč v jednořádkovém poli zahodí konce řádků
+  // → odkazy se slepí, proto dělit i před každým „http“
+  const urls = $('#url').value.split(/\s+|(?=https?:\/\/)/).filter(Boolean);
+  const icon = TARGET==='serialy'?'tv':'film', failed = [], left = [];
+  let added = 0, last = null;
+  for(const [n, url] of urls.entries()){
+    if(urls.length > 1) btn.textContent = `Přidávám ${n+1}/${urls.length}…`;
+    try {
+      const r = await fetch('/api/add',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url,target:TARGET})});
+      const d = await r.json();
+      if(!r.ok) throw new Error(d.detail||'Chyba');
+      added++; last = d;
+    } catch(err){ failed.push(err.message); left.push(url); }
+  }
+  if(added === 1 && !failed.length)
+    toast('Přidáno do stahování', false, `${cleanName(last.name)}${last.size?' · '+fmtB(last.size):''} · ${destTxt(last.target)}`, icon);
+  else if(added) toast(`Přidáno ${added} z ${urls.length}`, !!failed.length, failed.length ? failed[0] : destTxt(last.target), icon);
+  else toast('Nepodařilo se přidat', true, failed[0] || 'Chyba');
+  $('#url').value = left.join(' ');              // v poli zůstanou jen ty, které neprošly
+  if(!left.length) $('#url').blur();
+  if(added) refresh();
+  btn.disabled = false; btn.textContent = 'Stáhnout';
+});
+
+/* ---------- stahování: panel + proužek ---------- */
+const openDl = on => document.body.classList.toggle('dl-open', on);
+$('#dlbtn').onclick = () => openDl(true);
+$('#stripbtn').onclick = () => openDl(true);
+$('#dlclose').onclick = $('#scrim').onclick = () => openDl(false);
+addEventListener('keydown', e => {
+  if(e.key==='Escape' && document.body.classList.contains('dl-open')) openDl(false);
+  if(e.key==='/' && !/INPUT|TEXTAREA/.test(document.activeElement.tagName)){ e.preventDefault(); $('#q').focus(); }
+});
+async function act(gid, what){ await fetch(`/api/${what}/${gid}`,{method:'POST'}); refresh(); }
+async function cancelDl(gid){
+  const i = DL.find(d => d.gid === gid); if(!i) return;
+  // rozstažená data se mažou (jen v .incomplete) → potvrdit, ať se omylem nezahodí desítky GB
+  if(!await askConfirm('Zrušit stahování?', cleanName(i.name),
+      i.done ? `Staženo ${fmtB(i.done)}${i.total ? ' z ' + fmtB(i.total) : ''} se smaže. Knihovny se to nedotkne.` : 'Stahování se odebere z fronty.',
+      'Zrušit a smazat', 'Pokračovat ve stahování')) return;
+  const r = await fetch(`/api/remove/${gid}`, {method:'POST'});
+  const d = await r.json().catch(()=>({}));
+  if(!r.ok) toast('Zrušení se nepovedlo', true, d.detail||'');
+  else toast('Stahování zrušeno', false, `${cleanName(i.name)}${d.freed ? ' · uvolněno ' + fmtB(d.freed) : ''}`, 'x');
+  refresh();
+}
+async function clearDone(){
+  // archiv, který čeká na části / rozbaluje se / chce heslo, nechat — jinak by zmizel i s možností zadat heslo
+  await Promise.all(DL.filter(i=>['complete','error','removed'].includes(i.status) && canAct(i)
+      && (!i.extract || i.extract.state === 'done')).map(i => fetch(`/api/remove/${i.gid}`,{method:'POST'})));
+  refresh();
+}
+
+let DL = [], HOVER = null, doneCount;
+// rodina smí pauznout/zrušit/skrýt jen svoje stahování, správce všechna
+const canAct = i => ADMIN || i.mine;
+const byTxt = i => i.mine ? '' : ` · od ${esc(i.by)}`;
+const WIN = 600;                                           // okno grafu: posledních 10 min
+const hhmm = t => new Date(t).toLocaleTimeString('cs-CZ', {hour:'2-digit', minute:'2-digit'});
+const niceMax = v => { const s = [10,20,50,100,150,200,250,300,400,500].map(x=>x*1048576); return s.find(x=>x>=v) || Math.ceil(v/104857600)*104857600; };
+const cleanName = n => n.replace(/\.[^.]{2,4}$/,'');
+const destTxt = t => (t||'').replace(/^filmy/,'Filmy').replace(/^serialy/,'Seriály').replace(/\//g,' › ');
+
+async function refresh(){
+  try{
+    const d = await (await fetch('/api/status')).json();
+    DL = d.items;
+    const running = DL.filter(i=>['active','waiting','paused'].includes(i.status));
+    const finished = DL.filter(i=>!['active','waiting','paused'].includes(i.status));
+    $('#dlstate').textContent = !d.logged ? 'Chybí přihlášení k Webshare (.env)' : running.length
+      ? `${running.length} ${plural(running.length,'soubor','soubory','souborů')} · ${d.speed ? fmtB(d.speed)+'/s' : 'čeká'}${d.throttle ? ' · zpomaleno, někdo se dívá' : ''}` : 'Nic se nestahuje';
+    // tlačítko v hlavičce: počet + prstenec s celkovým průběhem
+    const tot = running.reduce((a,i)=>a+i.total,0), done = running.reduce((a,i)=>a+i.done,0);
+    const b = $('#dlbtn'); b.classList.toggle('busy', running.length>0);
+    b.style.setProperty('--p', tot ? (done/tot*100).toFixed(1) : 0);
+    $('#dlcount').textContent = running.length;
+    // proužek pod hlavičkou s prvním aktivním stahováním
+    const a = running.find(i=>i.status==='active') || running[0];
+    $('#strip').classList.toggle('on', !!a);
+    if(a) $('#stripbtn').innerHTML = `<span class="dot"${a.status!=='active'?' style="animation:none;background:var(--warn)"':''}></span>
+      <span class="nm">${esc(cleanName(a.name))}${running.length>1?` <span style="color:var(--dim);font-weight:400">a ${running.length-1} další</span>`:''}</span>
+      <span class="st"><span><b>${Math.floor(a.percent)} %</b></span>${a.status==='active'?`<span>${fmtB(a.speed)}/s</span>${a.eta!=null?`<span>zbývá ${fmtT(a.eta)}</span>`:''}`:`<span>${a.status==='paused'?'pozastaveno':'čeká'}</span>`}</span>
+      <span class="bar" style="width:${a.percent}%"></span>`;
+    const nDone = DL.filter(i=>i.status==='complete').length;
+    if(doneCount!==undefined && nDone!==doneCount) loadLib();
+    doneCount = nDone;
+    $('#list').innerHTML = !DL.length ? `<div class="dempty">${ic('dl')}<div>Nic se nestahuje.</div><div style="font-size:13px;color:var(--dim);margin-top:4px">Vlož odkaz nahoře do lišty.</div></div>`
+      : (running.length ? `<div class="dsec">Probíhá</div>${running.map(dlCard).join('')}` : '')
+      + (finished.length ? `<div class="dsec">Dokončeno<button onclick="clearDone()">Vyčistit</button></div>${finished.map(dlCard).join('')}` : '');
+    drawTips();
+  }catch(e){ $('#dlstate').textContent='Server nedostupný'; }
+}
+
+function archCard(i){
+  const x = i.extract, st = x.state, act = canAct(i);
+  const icn = {done:'check', password:'alert', error:'alert'}[st] || 'file';
+  const btn = !act ? '' : st==='password' ? `<button class="btn sm" onclick="askPw('${esc(i.gid)}')">Zadat heslo</button>`
+    : st==='error' && x.retry ? `<button class="btn sm" onclick="extractAgain('${esc(i.gid)}','')">Zkusit znovu</button>` : '';
+  const hide = act && !['waiting','running'].includes(st)
+    ? `<button class="btn sm icon" title="${st==='done'?'Skrýt':'Skrýt a smazat archiv'}" onclick="act('${esc(i.gid)}','remove')">${ic('x')}</button>` : '';
+  return `<div class="item small x-${esc(st)}">
+      <span class="sic">${ic(icn)}</span>
+      <div class="main"><div class="name" title="${esc(i.name)}">${esc(cleanName(i.name))}</div>
+        <div class="xmsg" title="${esc(x.msg)}">${esc(x.msg)}${st==='done' ? ' · ' + esc(destTxt(i.target.split('/')[0])) : ''}${byTxt(i)}</div></div>
+      ${btn}${hide}</div>`;
+}
+async function extractAgain(gid, password){
+  const r = await fetch(`/api/extract/${gid}`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({password})});
+  if(!r.ok){ const d = await r.json().catch(()=>({})); toast('Nejde rozbalit', true, d.detail||''); }
+  refresh();
+}
+function askPw(gid){
+  const i = DL.find(d => d.gid === gid); if(!i) return;
+  const dlg = $('#pwdlg'); $('#pwwhat').textContent = cleanName(i.name); $('#pwin').value = '';
+  dlg.returnValue = ''; dlg.showModal(); $('#pwin').focus();
+  // Enter by jinak „stiskl“ první tlačítko formuláře = Zrušit
+  $('#pwin').onkeydown = e => { if(e.key === 'Enter'){ e.preventDefault(); dlg.close('yes'); } };
+  dlg.addEventListener('close', () => {
+    const pw = $('#pwin').value; $('#pwin').value = '';
+    if(dlg.returnValue === 'yes' && pw) extractAgain(gid, pw);
+  }, {once:true});
+}
+
+function dlCard(i){
+  if(i.status==='complete' && i.extract) return archCard(i);
+  if(!['active','paused','waiting'].includes(i.status)) return `<div class="item small ${i.status}">
+      <span class="sic">${ic(i.status==='complete'?'check':'x')}</span>
+      <div class="main"><div class="name" title="${esc(i.name)}">${esc(cleanName(i.name))}</div>
+        ${i.error ? `<div class="err">${esc(i.error)}</div>` : `<div class="dest">${esc(destTxt(i.target))} · ${fmtB(i.total)}${byTxt(i)}</div>`}</div>
+      ${canAct(i) ? `<button class="btn sm icon" title="Skrýt" onclick="act('${esc(i.gid)}','remove')">${ic('x')}</button>` : ''}</div>`;
+  const pct = Math.floor(i.percent), dec = (i.percent % 1).toFixed(1).slice(1);
+  const kv = [];
+  if(i.status==='active') kv.push(['Rychlost', `${fmtB(i.speed)}/s`]);
+  kv.push(['Staženo', `${fmtB(i.done)} <em>z ${i.total?fmtB(i.total):'?'}</em>`]);
+  if(i.status==='active' && i.eta!=null) kv.push(['Zbývá', `${fmtT(i.eta)} <em>· ${hhmm(Date.now()+i.eta*1000)}</em>`]);
+  if(i.status==='active') kv.push(['Spojení', i.connections]);
+  const label = {active:'Stahuje', waiting:'Ve frontě', paused:'Pozastaveno'}[i.status];
+  return `<div class="item ${i.status}" data-gid="${esc(i.gid)}">
+    <div class="top"><div><div class="name">${esc(cleanName(i.name))}</div>
+      <div class="dest">${ic(i.target.startsWith('serialy')?'tv':'film')}${esc(destTxt(i.target))}${byTxt(i)}</div></div>
+      <span class="pill">${label}</span></div>
+    <div class="mid"><div class="pct">${pct}<small>${dec} %</small></div><div class="kv">${kv.map(([k,v])=>`<div><span>${k}</span><b>${v}</b></div>`).join('')}</div></div>
+    <div class="prog"><div style="width:${i.percent}%"></div></div>
+    ${i.status==='waiting' ? '' : chart(i)}
+    <div class="foot"><span></span><span class="actions">${!canAct(i) ? '' : `
+        ${i.status==='active'?`<button class="btn sm" onclick="act('${esc(i.gid)}','pause')">${ic('pause','i fill')}Pauza</button>`:''}
+        ${i.status==='paused'?`<button class="btn sm" onclick="act('${esc(i.gid)}','unpause')">${ic('play','i fill')}Pokračovat</button>`:''}
+        <button class="btn sm danger" onclick="cancelDl('${esc(i.gid)}')">${ic('x')}Zrušit</button>`}
+      </span></div>
+  </div>`;
+}
+
+function chart(i){
+  const h = i.hist || [];
+  if(h.length < 2) return `<div class="chart"><div class="nodata">Graf rychlosti se kreslí…</div></div>`;
+  const now = h[h.length-1][0], t0 = now - WIN, W = 1000, H = 84;
+  const max = niceMax(Math.max(...h.map(p=>p[1]), 1));
+  const x = t => (t - t0) / WIN * W, y = v => H - v / max * (H - 4);
+  const pts = h.filter(p => p[0] >= t0).map(p => `${x(p[0]).toFixed(1)},${y(p[1]).toFixed(1)}`);
+  const first = pts[0].split(',')[0], last = pts[pts.length-1].split(',')[0];
+  return `<div class="chart" data-gid="${esc(i.gid)}">
+    <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+      <defs><linearGradient id="ga" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3ecf8e" stop-opacity=".3"/><stop offset="1" stop-color="#3ecf8e" stop-opacity="0"/></linearGradient></defs>
+      <line x1="0" x2="${W}" y1="${y(max/2)}" y2="${y(max/2)}" stroke="rgba(255,255,255,.08)" stroke-dasharray="4 6" vector-effect="non-scaling-stroke"/>
+      <line x1="0" x2="${W}" y1="${H}" y2="${H}" stroke="rgba(255,255,255,.08)" vector-effect="non-scaling-stroke"/>
+      <polygon points="${first},${H} ${pts.join(' ')} ${last},${H}" fill="url(#ga)"/>
+      <polyline points="${pts.join(' ')}" fill="none" stroke="#3ecf8e" stroke-width="2" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>
+      <line class="cross" x1="0" x2="0" y1="0" y2="${H}" stroke="#9aa3b2" stroke-width="1" vector-effect="non-scaling-stroke" visibility="hidden"/>
+    </svg>
+    <span class="lbl y" style="top:${y(max)/H*100}%">${fmtB(max)}/s</span>
+    <span class="lbl y" style="top:${y(max/2)/H*100}%">${fmtB(max/2)}/s</span>
+    <span class="lbl y" style="top:100%">0</span>
+    <span class="lbl" style="left:0;bottom:-19px">před 10 min</span><span class="lbl" style="right:66px;bottom:-19px">teď</span>
+  </div>`;
+}
+// najetí myší: svislá čára + bublina s rychlostí v daném okamžiku
+function drawTips(){
+  document.querySelectorAll('.chart[data-gid]').forEach(c => {
+    c.querySelector('.tip')?.remove();
+    const cross = c.querySelector('.cross');
+    const it = DL.find(d => d.gid === c.dataset.gid);
+    if(!HOVER || HOVER.gid !== c.dataset.gid || !it){ cross.setAttribute('visibility','hidden'); return; }
+    const h = it.hist, now = h[h.length-1][0], t = now - WIN + HOVER.frac * WIN;
+    const p = h.reduce((a,b) => Math.abs(b[0]-t) < Math.abs(a[0]-t) ? b : a);
+    const fx = (p[0] - (now - WIN)) / WIN;
+    if(fx < 0){ cross.setAttribute('visibility','hidden'); return; }
+    cross.setAttribute('x1', fx*1000); cross.setAttribute('x2', fx*1000); cross.setAttribute('visibility','visible');
+    const tip = document.createElement('div'); tip.className = 'tip';
+    tip.style.left = `calc((100% - 66px) * ${Math.min(Math.max(fx, .08), .92)})`;
+    tip.innerHTML = `<b>${fmtB(p[1])}/s</b><span>${hhmm(p[0]*1000)}</span>`;
+    c.append(tip);
+  });
+}
+$('#list').addEventListener('mousemove', e => {
+  const c = e.target.closest('.chart[data-gid]');
+  if(!c){ if(HOVER){ HOVER = null; drawTips(); } return; }
+  const r = c.querySelector('svg').getBoundingClientRect();
+  HOVER = {gid: c.dataset.gid, frac: Math.min(Math.max((e.clientX - r.left) / r.width, 0), 1)};
+  drawTips();
+});
+$('#list').addEventListener('mouseleave', () => { HOVER = null; drawTips(); });
+
+/* ---------- knihovna: data → model ---------- */
+let LIB = null;
+function seasonName(dir){
+  if(!dir) return 'Ostatní';
+  const m = dir.match(/^season\s*(\d+)$/i);
+  if(m) return +m[1]===0 ? 'Speciály' : `Série ${+m[1]}`;
+  return dir;
+}
+const label = i => i.title || i.name.replace(/\.[^.]+$/,'');
+function stats(items){
+  const known = items.filter(i=>i.played!=null);
+  return { n:items.length, size:items.reduce((a,i)=>a+i.size,0), seen:known.filter(i=>i.played).length, known:known.length };
+}
+const addedOf = i => i.added || i.mtime;
+const epOrder = (a,b) => (a.season??1e9)-(b.season??1e9) || (a.episode??1e9)-(b.episode??1e9) || coll.compare(a.name,b.name);
+function build(items){
+  const movies = [], shows = new Map();
+  for(const i of items){
+    if(i.target==='filmy'){ movies.push(i); continue; }
+    const parts = i.group ? i.group.split('/') : ['(bez složky)'];
+    const show = parts[0], sdir = parts.slice(1).join('/');
+    if(!shows.has(show)) shows.set(show, {name:show, seriesId:null, seasons:new Map(), items:[], added:0, lastPlayed:''});
+    const s = shows.get(show);
+    s.items.push(i); s.seriesId ||= i.series_id;
+    s.added = Math.max(s.added, addedOf(i));
+    if(i.last_played && i.last_played > s.lastPlayed) s.lastPlayed = i.last_played;
+    if(!s.seasons.has(sdir)) s.seasons.set(sdir, []);
+    s.seasons.get(sdir).push(i);
+  }
+  for(const s of shows.values()){
+    s.info = (LIB.series||{})[s.seriesId] || {};
+    s.title = s.items[0].series || s.info.name || s.name;
+  }
+  return {movies, shows};
+}
+const showFor = (shows, i) => shows.get((i.group||'').split('/')[0]);
+
+/* ---------- routing (#/serialy/Seriál/Season 01) ---------- */
+const route = () => location.hash.replace(/^#\/?/,'').split('/').filter(Boolean).map(decodeURIComponent);
+const href = (...p) => '#/' + p.map(encodeURIComponent).join('/');
+let lastRoute = '';
+addEventListener('hashchange', () => {
+  const r = route(), key = r.slice(0, 2).join('/');
+  // přepnutí série uvnitř seriálu nescrolluje nahoru
+  const keep = r[0]==='serialy' && r.length>=2 && lastRoute===key;
+  lastRoute = key;
+  if(r.length && $('#q').value){ $('#q').value = ''; }
+  render(!keep);
+});
+$('#q').addEventListener('input', () => render(true));
+// mobil: „Hledat“ dole otevře/zavře řádek s hledáním
+$('#tsearch').onclick = () => {
+  const on = document.body.classList.toggle('msearch');
+  if(on){ $('#q').focus(); scrollTo({top:0}); }
+  else if($('#q').value){ $('#q').value = ''; }
+  render(false);
+};
+document.querySelectorAll('#tabbar a').forEach(a => a.addEventListener('click', () => {
+  document.body.classList.remove('msearch'); $('#q').value = '';
+  if(location.hash === a.getAttribute('href')) render(true);   // klik na aktivní záložku = nahoru
+}));
+
+/* ---------- sdílené kousky ---------- */
+function posterHtml(id, name, extra=''){
+  const ph = esc((name||'?').replace(/[^\p{L}\p{N} ]/gu,'').split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0]).join('').toUpperCase());
+  return `<div class="poster"><div class="ph">${ph}</div>${id?`<img loading="lazy" src="${img(id)}" alt="" onerror="this.remove()">`:''}${extra}</div>`;
+}
+// mazat smí jen správce (rodina vidí knihovnu jen pro čtení; server to hlídá taky)
+const delBtn = (kind, rel, lbl, size, text, cls='btn danger') => !ADMIN ? '' :
+  `<button class="${cls} del" data-kind="${kind}" data-rel="${esc(rel)}" data-label="${esc(lbl)}" data-size="${size}" title="Smazat">${ic('trash')}${text?esc(text):''}</button>`;
+function yearTxt(x){
+  if(!x.year) return '';
+  return x.end && x.end != x.year ? `${x.year}–${x.status==='Continuing'?'dosud':x.end}` : x.status==='Continuing' ? `${x.year}–dosud` : `${x.year}`;
+}
+function metaHtml(x, extra=[]){
+  const c = [];
+  const y = yearTxt(x); if(y) c.push(y);
+  if(x.rating) c.push(`${ic('star','i star')}${x.rating.toFixed(1).replace('.',',')}`);
+  if(x.minutes) c.push(fmtMin(x.minutes));
+  c.push(...extra);
+  return c.length ? `<div class="meta">${c.map(t=>`<span>${t}</span>`).join('')}</div>` : '';
+}
+// štítky žánrů na detailu vedou na přehled filtrovaný tím žánrem
+const tagsHtml = (g, kind) => (g||[]).length ? `<div class="tags">${g.slice(0,4).map(t=>
+  `<a href="${href(kind)}" data-genre="${esc(t)}" data-kind="${kind}" title="Všechny ${kind==='filmy'?'filmy':'seriály'}: ${esc(t)}">${esc(t)}</a>`).join('')}</div>` : '';
+
+const showCard = s => { const st = stats(s.items), fresh = Date.now()/1000 - s.added < 3*86400;
+  const unseen = st.known ? st.n - st.seen : 0;
+  return `<a class="card" href="${href('serialy', s.name)}">${posterHtml(s.seriesId, s.title,
+      (s.info.matched===false ? `<span class="qmark" title="Jellyfin seriál nerozpoznal">?</span>` : st.known && st.seen===st.n ? `<span class="badge">${ic('check')}</span>` : unseen && st.seen ? `<span class="count" title="nezhlédnuté díly">${unseen}</span>` : '')
+      + (fresh ? `<span class="new">NOVÉ</span>` : '')
+      + `<div class="ov">${s.info.rating?`<span>${ic('star','i star')}${s.info.rating.toFixed(1).replace('.',',')}</span>`:''}<span>${fmtB(st.size)}</span></div>`)}
+    <div class="t">${esc(s.title)}</div>
+    <div class="s">${s.seasons.size} ${plural(s.seasons.size,'série','série','sérií')} · ${st.n} ${plural(st.n,'díl','díly','dílů')}</div>
+    ${st.known && st.seen && st.seen<st.n ? `<div class="pbar ok"><div style="width:${st.seen/st.n*100}%"></div></div>` : ''}</a>`; };
+const movieCard = i => { const fresh = Date.now()/1000 - addedOf(i) < 3*86400;
+  return `<a class="card" href="${href(...i.rel.split('/'))}">${posterHtml(i.jf_id, label(i),
+      (i.matched===false ? `<span class="qmark" title="Jellyfin film nerozpoznal">?</span>` : i.played ? `<span class="badge">${ic('check')}</span>` : '') + (fresh && !i.played ? `<span class="new">NOVÉ</span>` : '')
+      + `<div class="ov">${i.rating?`<span>${ic('star','i star')}${i.rating.toFixed(1).replace('.',',')}</span>`:''}<span>${fmtB(i.size)}</span></div>`)}
+    <div class="t" title="${esc(i.name)}">${esc(label(i))}</div>
+    <div class="s">${[i.year, i.minutes && fmtMin(i.minutes)].filter(Boolean).join(' · ')}</div>
+    ${i.progress ? `<div class="pbar"><div style="width:${i.progress}%"></div></div>` : ''}</a>`; };
+
+// 16:9 karta: obrázek (náhled dílu / backdrop), přes něj logo nebo název
+function wideCard(hrefTo, bgId, bgType, logoId, title, line1, line2, progress, tag){
+  return `<a class="card" href="${hrefTo}"><div class="thumb">
+      ${bgId ? `<img loading="lazy" src="${img(bgId, bgType)}" alt="" onerror="this.remove()">` : ''}
+      ${logoId ? `<img class="lg" loading="lazy" src="${img(logoId,'Logo')}" alt="" onerror="this.nextElementSibling.hidden=false;this.remove()">` : ''}
+      <div class="tx"${logoId?' hidden':''}>${esc(title)}</div>
+      ${tag ? `<span class="new">${tag}</span>` : ''}
+      <span class="play">${ic('play')}</span>
+      ${progress ? `<div class="pbar"><div style="width:${progress}%"></div></div>` : ''}
+    </div><div class="t">${line1}</div><div class="s">${line2}</div></a>`;
+}
+
+/* ---------- úvod ---------- */
+let HERO = {i:0, t:null, n:0};
+function heroItems(movies, shows){
+  // nejnovější tituly (film / seriál podle posledního přidaného dílu), přednost mají ty s backdropem
+  const all = [
+    ...movies.map(m => ({kind:'movie', added:addedOf(m), m, bd:m.has_backdrop})),
+    ...[...shows.values()].map(s => ({kind:'show', added:s.added, s, bd:s.info.has_backdrop})),
+  ].sort((a,b) => (b.bd - a.bd) || (b.added - a.added));
+  return all.slice(0, 5);
+}
+function heroSlide(h, k){
+  k = k === Math.min(HERO.i, HERO.n-1) ? 0 : -1;     // aktivní snímek rovnou „on“, bez prolínání při překreslení
+  if(h.kind==='movie'){
+    const m = h.m;
+    return `<div class="slide${k===0?' on':''}">
+      <div class="bd${m.has_backdrop?'':' blur'}" style="background-image:url('${img(m.jf_id, m.has_backdrop?'Backdrop':'Primary')}')"></div><div class="shade"></div>
+      <div class="body"><div class="kick">${ic('film')}Film · přidáno ${ago(addedOf(m))}</div>
+        ${m.has_logo ? `<img class="logo" src="${img(m.jf_id,'Logo')}" alt="${esc(label(m))}">` : `<h1>${esc(label(m))}</h1>`}
+        ${metaHtml(m, m.played?[`<span class="seen">${ic('check')}zhlédnuto</span>`]:[])}
+        ${m.overview ? `<p>${esc(m.overview)}</p>` : '<p></p>'}
+        <div class="acts">${m.jf_id?`<a class="btn light" href="${jfLink(m.jf_id)}" target="_blank" rel="noopener">${ic('play','i fill')}Přehrát v Jellyfinu</a>`:''}
+          <a class="btn" href="${href(...m.rel.split('/'))}">${ic('info')}Detail</a></div></div></div>`;
+  }
+  const s = h.s, st = stats(s.items), x = s.info;
+  const newest = [...s.items].sort((a,b)=>addedOf(b)-addedOf(a))[0];
+  return `<div class="slide${k===0?' on':''}">
+    <div class="bd${x.has_backdrop?'':' blur'}" style="background-image:url('${img(s.seriesId, x.has_backdrop?'Backdrop':'Primary')}')"></div><div class="shade"></div>
+    <div class="body"><div class="kick">${ic('tv')}Seriál · ${seasonName((newest.group||'').split('/')[1])} přidána ${ago(s.added)}</div>
+      ${x.has_logo ? `<img class="logo" src="${img(s.seriesId,'Logo')}" alt="${esc(s.title)}">` : `<h1>${esc(s.title)}</h1>`}
+      ${metaHtml(x, [`${s.seasons.size} ${plural(s.seasons.size,'série','série','sérií')}`])}
+      ${x.overview ? `<p>${esc(x.overview)}</p>` : '<p></p>'}
+      <div class="acts">${s.seriesId?`<a class="btn light" href="${jfLink(s.seriesId)}" target="_blank" rel="noopener">${ic('play','i fill')}Přehrát v Jellyfinu</a>`:''}
+        <a class="btn" href="${href('serialy', s.name)}">${ic('info')}Detail</a></div></div></div>`;
+}
+function heroGo(k){
+  const el = $('.hero'); if(!el) return;
+  const slides = el.querySelectorAll('.slide'), dots = el.querySelectorAll('.dots button');
+  HERO.i = (k + slides.length) % slides.length;
+  slides.forEach((s,j) => s.classList.toggle('on', j===HERO.i));
+  dots.forEach((d,j) => { d.classList.remove('on'); if(j===HERO.i){ void d.offsetWidth; d.classList.add('on'); } });
+}
+function heroStart(){
+  clearInterval(HERO.t);
+  if(HERO.n < 2) return;
+  HERO.t = setInterval(() => { if(!$('.hero')?.classList.contains('paused') && !document.hidden) heroGo(HERO.i+1); }, 9000);
+}
+
+function continueItems(movies, shows){
+  // rozkoukané filmy/díly + u rozkoukaných seriálů další nezhlédnutý díl
+  const out = [];
+  for(const m of movies) if(m.progress && !m.played) out.push({t:m.last_played||'', kind:'movie', i:m});
+  for(const s of shows.values()){
+    const eps = [...s.items].sort(epOrder);
+    const mid = eps.filter(e => e.progress && !e.played).sort((a,b)=>coll.compare(b.last_played||'',a.last_played||''))[0];
+    if(mid){ out.push({t:mid.last_played||'', kind:'ep', i:mid, s}); continue; }
+    if(!eps.some(e=>e.played)) continue;
+    const lastSeen = eps.reduce((k,e,j) => e.played ? j : k, -1);
+    const next = eps.slice(lastSeen+1).find(e => !e.played);
+    if(next) out.push({t:s.lastPlayed, kind:'ep', i:next, s, next:true});
+  }
+  return out.sort((a,b)=>coll.compare(b.t,a.t)).slice(0, 20);
+}
+function recentItems(movies, shows){
+  // naposledy přidané: filmy zvlášť, seriál jednou kartou — díly přidané do 2 dnů od nejnovějšího = jedna dávka
+  const out = movies.map(m => ({added:addedOf(m), kind:'movie', m}));
+  for(const s of shows.values()){
+    const batch = s.items.filter(e => s.added - addedOf(e) < 2*86400);
+    const dirs = [...new Set(batch.map(e => (e.group||'').split('/').slice(1).join('/')))].sort(coll.compare);
+    out.push({added:s.added, kind:'show', s, dirs, n:batch.length});
+  }
+  return out.sort((a,b)=>b.added-a.added).slice(0, 20);
+}
+
+const arrows = () => `<div class="arrows hide"><button class="prev" title="Zpět" aria-label="Zpět">${ic('chev')}</button><button class="next" title="Další" aria-label="Další">${ic('chev')}</button></div>`;
+// šipky: posun o šířku řady, skrýt když se vše vejde, zašednout na krajích
+function initRails(){
+  document.querySelectorAll('.row').forEach(row => {
+    const rail = row.querySelector('.rail'), ar = row.querySelector('.arrows'); if(!rail || !ar) return;
+    const [prev, next] = ar.querySelectorAll('button');
+    const upd = () => {
+      const max = rail.scrollWidth - rail.clientWidth;
+      ar.classList.toggle('hide', max < 4);
+      prev.disabled = rail.scrollLeft < 4; next.disabled = rail.scrollLeft > max - 4;
+    };
+    prev.onclick = () => rail.scrollBy({left: -rail.clientWidth * .9});
+    next.onclick = () => rail.scrollBy({left: rail.clientWidth * .9});
+    rail.onscroll = upd;                               // přiřazení (ne addEventListener) → při resize se neduplikuje
+    upd();
+  });
+}
+addEventListener('resize', () => initRails());
+
+function renderHome(movies, shows){
+  const v = $('#view');
+  const heroes = heroItems(movies, shows);
+  HERO.n = heroes.length;
+  const showList = [...shows.values()].sort((a,b)=>b.added-a.added);
+  const movieList = [...movies].sort((a,b)=>addedOf(b)-addedOf(a));
+  const cont = continueItems(movies, shows), recent = recentItems(movies, shows);
+
+  const hero = heroes.length ? `<section class="hero" id="hero">${heroes.map(heroSlide).join('')}
+      ${heroes.length>1?`<div class="dots">${heroes.map((_,k)=>`<button class="${k===0?'on':''}" data-k="${k}" title="${k+1}"></button>`).join('')}</div>`:''}</section>`
+    : `<section class="hero empty"><h1>Knihovna je zatím prázdná</h1><p style="color:var(--muted)">Vlož nahoře odkaz z Webshare nebo Fastshare a první film se tu objeví hned po stažení.</p></section>`;
+
+  const contRow = cont.length ? `<section class="row"><div class="rowhead"><h2>Pokračovat ve sledování</h2>${arrows()}</div><div class="rail">${cont.map(c => {
+      if(c.kind==='movie') return wideCard(href(...c.i.rel.split('/')), c.i.jf_id, c.i.has_backdrop?'Backdrop':'Primary', c.i.has_logo&&c.i.jf_id, label(c.i), esc(label(c.i)), `${Math.round(c.i.progress)} % zhlédnuto`, c.i.progress);
+      const e = c.i;
+      return wideCard(href('serialy', c.s.name, (e.group||'').split('/').slice(1).join('/')), e.jf_id, 'Thumb', null, label(e),
+        esc(c.s.title), `${e.season!=null?`S${pad(e.season)}E${pad(e.episode??0)} · `:''}${esc(label(e))}`, e.progress, c.next ? 'DALŠÍ DÍL' : '');
+    }).join('')}</div></section>` : '';
+
+  const recentRow = recent.length ? `<section class="row"><div class="rowhead"><h2>Naposledy přidané</h2>${arrows()}</div><div class="rail">${recent.map(r => {
+      if(r.kind==='movie'){ const m = r.m;
+        return wideCard(href(...m.rel.split('/')), m.jf_id, m.has_backdrop?'Backdrop':'Primary', m.has_logo&&m.jf_id, label(m), esc(label(m)), `Film · ${ago(r.added)}`); }
+      const x = r.s.info;
+      // „Série 3–5“ jen u souvislé řady čísel, jinak počet sérií
+      const nums = r.dirs.map(d => (d.match(/^season\s*(\d+)$/i)||[])[1]).map(Number);
+      const range = nums.every(n => n > 0) && nums.every((n,k) => !k || n === nums[k-1]+1);
+      const sez = r.dirs.length===1 ? seasonName(r.dirs[0]) : range ? `Série ${nums[0]}–${nums[nums.length-1]}` : `${r.dirs.length} ${plural(r.dirs.length,'série','série','sérií')}`;
+      return wideCard(href('serialy', r.s.name, ...(r.dirs.length===1 && r.dirs[0] ? r.dirs[0].split('/') : [])), r.s.seriesId, x.has_backdrop?'Backdrop':'Primary', x.has_logo&&r.s.seriesId, r.s.title,
+        esc(r.s.title), `${esc(sez)} · ${r.n} ${plural(r.n,'díl','díly','dílů')} · ${ago(r.added)}`);
+    }).join('')}</div></section>` : '';
+
+  v.innerHTML = hero + `<div class="wrap page">${contRow}${recentRow}
+    <section class="row"><div class="rowhead"><h2>Seriály<small>${shows.size}</small></h2>${showList.length?`<a href="${href('serialy')}">Zobrazit vše${ic('chev')}</a>`:''}</div>
+      ${showList.length ? `<div class="grid">${showList.slice(0,14).map(showCard).join('')}</div>` : `<div class="hintcard">Žádné seriály. Vlož odkaz na díl (název s S01E01) a zařadí se sám.</div>`}</section>
+    <section class="row"><div class="rowhead"><h2>Filmy<small>${movies.length}</small></h2>${movieList.length?`<a href="${href('filmy')}">Zobrazit vše${ic('chev')}</a>`:''}</div>
+      ${movieList.length ? `<div class="grid">${movieList.slice(0,14).map(movieCard).join('')}</div>` : `<div class="hintcard">Zatím žádné filmy. Vlož odkaz z Webshare nebo Fastshare a vyber Film.</div>`}</section>
+  </div>`;
+
+  initRails();
+  const h = $('#hero');
+  if(h){
+    h.addEventListener('mouseenter', () => h.classList.add('paused'));
+    h.addEventListener('mouseleave', () => h.classList.remove('paused'));
+    h.querySelector('.dots')?.addEventListener('click', e => { const b = e.target.closest('button'); if(b){ heroGo(+b.dataset.k); heroStart(); } });
+    heroGo(Math.min(HERO.i, heroes.length-1));
+    heroStart();
+  }
+}
+
+/* ---------- přehled filmů / seriálů ---------- */
+const PREF = (() => { try { return JSON.parse(localStorage.getItem('ws_pref')||'{}'); } catch { return {}; } })();
+const savePref = () => { try { localStorage.setItem('ws_pref', JSON.stringify(PREF)); } catch {} };
+const SORTS = {added:'Naposledy přidané', name:'Název', year:'Rok', rating:'Hodnocení', size:'Velikost'};
+function sortList(list, key, get){
+  const by = {
+    added: (a,b) => get.added(b) - get.added(a),
+    name: (a,b) => coll.compare(get.name(a), get.name(b)),
+    year: (a,b) => (get.year(b)||0) - (get.year(a)||0),
+    rating: (a,b) => (get.rating(b)||0) - (get.rating(a)||0),
+    size: (a,b) => get.size(b) - get.size(a),
+  }[key] || (() => 0);
+  return [...list].sort((a,b) => by(a,b) || coll.compare(get.name(a), get.name(b)));
+}
+function renderList(kind, movies, shows){
+  const sort = PREF['sort_'+kind] || 'added', unseen = !!PREF.unseen;
+  const all = kind==='filmy' ? movies : [...shows.values()];
+  const genresOf = x => (kind==='filmy' ? x.genres : x.info.genres) || [];
+  // počty žánrů z celé knihovny (ne z vyfiltrované), nejčastější první
+  const gcount = new Map();
+  for(const x of all) for(const g of genresOf(x)) gcount.set(g, (gcount.get(g)||0) + 1);
+  const genres = [...gcount].sort((a,b) => b[1]-a[1] || coll.compare(a[0], b[0]));
+  let genre = PREF['genre_'+kind] || '';
+  if(genre && !gcount.has(genre)) genre = '';          // žánr z knihovny zmizel → zpět na vše
+  const keep = x => (!genre || genresOf(x).includes(genre));
+  let list, cards, total = all.length;
+  if(kind==='filmy'){
+    list = sortList(movies.filter(m => keep(m) && (!unseen || m.played!==true)), sort,
+      {added:addedOf, name:label, year:m=>m.year, rating:m=>m.rating, size:m=>m.size});
+    cards = list.map(movieCard);
+  } else {
+    list = sortList(all.filter(s => keep(s) && (!unseen || s.items.some(i=>i.played!==true))), sort,
+      {added:s=>s.added, name:s=>s.title, year:s=>s.info.year, rating:s=>s.info.rating, size:s=>stats(s.items).size});
+    cards = list.map(showCard);
+  }
+  const size = kind==='filmy' ? movies.reduce((a,m)=>a+m.size,0) : [...shows.values()].reduce((a,s)=>a+stats(s.items).size,0);
+  const noun = kind==='filmy' ? plural(total,'film','filmy','filmů') : plural(total,'seriál','seriály','seriálů');
+  $('#view').innerHTML = `<div class="wrap page">
+    <div class="lhead"><div><h1>${kind==='filmy'?'Filmy':'Seriály'}</h1><div class="sub">${total} ${noun} · ${fmtB(size)}</div></div>
+      <div class="tools">
+        <label class="toggle"><input type="checkbox" id="unseen"${unseen?' checked':''}><span class="sw"></span>Jen nezhlédnuté</label>
+        <select class="sel" id="sort">${Object.entries(SORTS).map(([k,t])=>`<option value="${k}"${k===sort?' selected':''}>${t}</option>`).join('')}</select>
+      </div></div>
+    ${genres.length ? `<div class="genres" id="genres"><button data-g=""${genre?'':' class="on"'}>Vše<small>${total}</small></button>${genres.map(([g,n]) =>
+      `<button data-g="${esc(g)}"${g===genre?' class="on"':''}>${esc(g)}<small>${n}</small></button>`).join('')}</div>` : ''}
+    ${cards.length ? `<div class="grid">${cards.join('')}</div>` : `<div class="empty">${!total ? 'Zatím tu nic není. Vlož nahoře odkaz z Webshare nebo Fastshare.' : unseen ? 'Všechno zhlédnuto.' : 'Nic nenalezeno.'}</div>`}
+  </div>`;
+  $('#unseen').onchange = e => { PREF.unseen = e.target.checked; savePref(); render(false); };
+  $('#sort').onchange = e => { PREF['sort_'+kind] = e.target.value; savePref(); render(false); };
+  $('#genres')?.addEventListener('click', e => {
+    const b = e.target.closest('button'); if(!b) return;
+    const sx = $('#genres').scrollLeft;                 // na mobilu neodskočit řadou žánrů na začátek
+    PREF['genre_'+kind] = b.dataset.g; savePref(); render(false);
+    if($('#genres')) $('#genres').scrollLeft = sx;
+  });
+}
+
+/* ---------- detail filmu ---------- */
+function detailShell(bgId, hasBd, posterId, posterName, inner){
+  return `<section class="detail">
+    <div class="bdwrap">${bgId?`<div class="bd${hasBd?'':' blur'}" style="background-image:url('${img(bgId, hasBd?'Backdrop':'Primary')}')"></div>`:''}</div>
+    <div class="wrap inner">${posterHtml(posterId, posterName)}<div class="info">${inner}</div></div></section>`;
+}
+function renderMovie(m, movies){
+  // další filmy: nejdřív se stejným žánrem, pak nejnovější
+  const g = new Set(m.genres||[]);
+  const others = movies.filter(x => x !== m)
+    .sort((a,b) => (b.genres||[]).filter(t=>g.has(t)).length - (a.genres||[]).filter(t=>g.has(t)).length || addedOf(b) - addedOf(a));
+  const st = m.played ? [`<span class="seen">${ic('check')}zhlédnuto</span>`] : m.progress ? [`zhlédnuto ${Math.round(m.progress)} %`] : [];
+  $('#view').innerHTML = detailShell(m.jf_id, m.has_backdrop, m.jf_id, label(m), `
+      <div class="crumb"><a href="#/">Úvod</a>${ic('chev')}<a href="${href('filmy')}">Filmy</a></div>
+      ${m.has_logo ? `<img class="logo" src="${img(m.jf_id,'Logo')}" alt="${esc(label(m))}">` : `<h1>${esc(label(m))}</h1>`}
+      ${metaHtml(m, st)}${tagsHtml(m.genres, 'filmy')}
+      ${m.overview ? `<p class="ov clamp" title="Klikni pro celý text">${esc(m.overview)}</p>` : m.matched!==false && m.jf_id ? `<p class="ov" style="color:var(--muted)">Bez popisu.</p>` : ''}
+      <div class="acts">${m.jf_id?`<a class="btn light" href="${jfLink(m.jf_id)}" target="_blank" rel="noopener">${ic('play','i fill')}Přehrát v Jellyfinu</a>`:''}
+        ${ADMIN&&m.jf_id?`<button class="btn" onclick="openIdent('${m.jf_id}','movie',${esc(JSON.stringify(m.name))},${m.matched?esc(JSON.stringify(label(m))):'null'},${m.matched&&m.year||'null'})" title="Špatně rozpoznaný film? Vyber správný.">${ic('wand')}Opravit rozpoznání</button>`:''}
+        ${delBtn('file', m.rel, label(m), m.size, 'Smazat film')}</div>
+      ${m.jf_id && m.matched===false ? `<div class="warnbox">${ic('alert')}<div><b>Jellyfin film nerozpoznal</b>Proto chybí popis, plakát i rok. Většinou za to může název souboru.</div>${ADMIN?`<button class="btn sm" onclick="openIdent('${m.jf_id}','movie',${esc(JSON.stringify(m.name))},null,null)">${ic('wand')}Opravit</button>`:''}</div>` : ''}
+      ${!m.jf_id ? `<div class="warnbox">${ic('alert')}<div><b>Jellyfin soubor zatím nezná</b>Počkej na sken knihovny (do 1 hodiny) nebo ho spusť v Jellyfinu.</div></div>` : ''}
+      <div class="file">${ic('file')}<b title="${esc(m.name)}">${esc(m.name)}</b><span>${fmtB(m.size)}</span></div>`)
+    + (others.length ? `<div class="wrap page"><section class="row"><div class="rowhead"><h2>Další filmy</h2><a href="${href('filmy')}">Zobrazit vše${ic('chev')}</a></div>
+        <div class="grid">${others.slice(0,14).map(movieCard).join('')}</div></section></div>` : '');
+}
+
+/* ---------- seriál + série ---------- */
+function renderShow(show, sdir){
+  const x = show.info, sst = stats(show.items);
+  const seasons = [...show.seasons.entries()].sort((a,b)=>coll.compare(a[0],b[0]));
+  // výchozí série: první s nezhlédnutým dílem, jinak první
+  if(sdir==null || !show.seasons.has(sdir)){
+    const firstUnseen = seasons.find(([,it]) => it.some(i=>i.played===false));
+    sdir = (firstUnseen || seasons[0])[0];
+  }
+  const items = show.seasons.get(sdir), st = stats(items);
+  const unseenOnly = !!PREF.unseen;
+  const eps = items.filter(i => !unseenOnly || i.played!==true).sort(epOrder);
+  const seenTxt = !sst.known ? '' : sst.seen===sst.n ? `<span class="seen">${ic('check')}vše zhlédnuto</span>` : `zhlédnuto ${sst.seen} z ${sst.n}`;
+
+  $('#view').innerHTML = detailShell(show.seriesId, x.has_backdrop, show.seriesId, show.title, `
+      <div class="crumb"><a href="#/">Úvod</a>${ic('chev')}<a href="${href('serialy')}">Seriály</a></div>
+      ${x.has_logo ? `<img class="logo" src="${img(show.seriesId,'Logo')}" alt="${esc(show.title)}">` : `<h1>${esc(show.title)}</h1>`}
+      ${metaHtml(x, [`${show.seasons.size} ${plural(show.seasons.size,'série','série','sérií')}`, `${sst.n} ${plural(sst.n,'díl','díly','dílů')}`, fmtB(sst.size)])}
+      ${tagsHtml(x.genres, 'serialy')}
+      ${x.overview ? `<p class="ov clamp" title="Klikni pro celý text">${esc(x.overview)}</p>` : ''}
+      ${sst.known ? `<div class="stat"><div class="pbar ok"><div style="width:${sst.seen/sst.n*100}%"></div></div><span class="meta">${seenTxt}</span></div>` : ''}
+      <div class="acts">${show.seriesId?`<a class="btn light" href="${jfLink(show.seriesId)}" target="_blank" rel="noopener">${ic('play','i fill')}Přehrát v Jellyfinu</a>`:''}
+        ${ADMIN&&show.seriesId?`<button class="btn" onclick="openIdent('${show.seriesId}','series',${esc(JSON.stringify(show.name))},${x.matched?esc(JSON.stringify(show.title)):'null'},${x.matched&&x.year||'null'})" title="Špatně rozpoznaný seriál? Vyber správný.">${ic('wand')}Opravit rozpoznání</button>`:''}
+        ${delBtn('dir', 'serialy/'+show.name, 'Celý seriál '+show.title, sst.size, 'Smazat seriál')}</div>
+      ${show.seriesId && x.matched===false ? `<div class="warnbox">${ic('alert')}<div><b>Jellyfin seriál nerozpoznal</b>Chybí popis, plakát i názvy dílů. Většinou za to může název složky.</div>${ADMIN?`<button class="btn sm" onclick="openIdent('${show.seriesId}','series',${esc(JSON.stringify(show.name))},null,null)">${ic('wand')}Opravit</button>`:''}</div>` : ''}`)
+  + `<div class="wrap page">
+      <div class="seasonbar">
+        <div class="tabs">${seasons.map(([dir, it]) => { const s2 = stats(it); const all = s2.known && s2.seen===s2.n;
+          return `<a href="${href('serialy', show.name, ...(dir?dir.split('/'):[]))}" class="${dir===sdir?'on':''}">${all?ic('check','i ck'):''}${esc(seasonName(dir))}<small>${it.length}</small></a>`; }).join('')}</div>
+        <div class="tools">
+          <label class="toggle"><input type="checkbox" id="unseen"${unseenOnly?' checked':''}><span class="sw"></span>Jen nezhlédnuté</label>
+          ${sdir ? delBtn('dir', `serialy/${show.name}/${sdir}`, `${show.title} – ${seasonName(sdir)}`, st.size, 'Smazat sérii', 'btn sm danger') : ''}
+        </div>
+      </div>
+      ${eps.length ? `<div class="eps">${eps.map(epRow).join('')}</div>` : `<div class="empty">Všechno zhlédnuto.</div>`}
+    </div>`;
+  $('#unseen').onchange = e => { PREF.unseen = e.target.checked; savePref(); render(false); };
+  // vybraná série doprostřed posuvného řádku (na mobilu) — jen vodorovně, stránkou nehýbat
+  requestAnimationFrame(() => {                     // až po vykreslení, jinak jsou rozměry 0
+    const tabs = $('.seasonbar .tabs'), on = tabs && tabs.querySelector('a.on');
+    if(!tabs) return;
+    if(on && tabs.scrollWidth > tabs.clientWidth) tabs.scrollLeft = on.offsetLeft - (tabs.clientWidth - on.offsetWidth) / 2;
+    // na konci řádku zeslabený okraj nedává smysl (nic dalšího už není)
+    const end = () => tabs.classList.toggle('end', tabs.scrollLeft + tabs.clientWidth >= tabs.scrollWidth - 2);
+    end(); tabs.onscroll = end;
+  });
+}
+function epRow(i){
+  return `<div class="ep${i.played?' played':''}" title="${esc(i.name)}">
+    <div class="no">${i.episode!=null ? i.episode : '–'}</div>
+    <div class="thumb">${i.jf_id && i.has_img ? `<img loading="lazy" src="${img(i.jf_id,'Thumb')}" alt="" onerror="this.remove()">` : ''}
+      ${i.played ? `<span class="badge">${ic('check')}</span>` : ''}${i.progress ? `<div class="pbar"><div style="width:${i.progress}%"></div></div>` : ''}</div>
+    <div class="main"><div class="tt">${esc(label(i))}${i.minutes?`<span>${fmtMin(i.minutes)}</span>`:''}</div>
+      ${i.overview ? `<div class="od">${esc(i.overview)}</div>` : `<div class="fn">${esc(i.name)}</div>`}</div>
+    <div class="side"><span>${fmtB(i.size)}</span>${delBtn('file', i.rel, label(i), i.size, '', 'btn sm icon danger')}</div>
+  </div>`;
+}
+
+/* ---------- hledání ---------- */
+function renderSearch(qRaw, movies, shows){
+  const q = norm(qRaw);
+  const sh = [...shows.values()].filter(s => norm(s.title + ' ' + s.name).includes(q));
+  const mv = movies.filter(m => norm(label(m) + ' ' + m.name).includes(q));
+  const eps = LIB.items.filter(i => i.target==='serialy' && norm([label(i), i.name].join(' ')).includes(q) && !sh.includes(showFor(shows, i))).slice(0, 40);
+  const n = sh.length + mv.length + eps.length;
+  $('#view').innerHTML = `<div class="wrap page">
+    <div class="lhead"><div><h1>Hledání</h1><div class="sub">„${esc(qRaw)}“ · ${n} ${plural(n,'výsledek','výsledky','výsledků')}</div></div></div>
+    ${sh.length||mv.length ? `<div class="grid">${sh.map(showCard).join('')}${mv.map(movieCard).join('')}</div>` : ''}
+    ${eps.length ? `<section class="row"><div class="rowhead"><h2>Díly</h2></div><div class="hits">${eps.map(i => { const s = showFor(shows, i);
+        return `<a class="hit" href="${href('serialy', s.name, ...(i.group.split('/').slice(1)))}"><div class="thumb">${i.jf_id&&i.has_img?`<img loading="lazy" src="${img(i.jf_id,'Thumb')}" alt="" onerror="this.remove()">`:''}</div>
+          <div><div class="t">${esc(label(i))}</div><div class="s">${esc(s.title)} · ${esc(seasonName(i.group.split('/')[1]))}${i.episode!=null?`, díl ${i.episode}`:''}</div></div></a>`; }).join('')}</div></section>` : ''}
+    ${!n ? `<div class="empty">Nic nenalezeno.</div>` : ''}
+  </div>`;
+}
+
+/* ---------- objevit (TMDB) + wishlist ---------- */
+// Data: /api/discover (seznamy z TMDB), /api/wishlist (každý uživatel svůj). Verze na Webshare se hledají
+// až v okně titulu (/api/wishlist/files) — hledání trvá pár sekund, do mřížky se nehodí.
+const tmImg = (path, size='w342') => path ? `https://image.tmdb.org/t/p/${size}${path}` : '';
+const LISTS = {trending:'Trendy tento týden', new:'Nově vydané', top:'Nejlépe hodnocené', popular:'Populární'};
+const DISC = {kind: PREF.d_kind || 'movie', list: PREF.d_list || 'trending', genre: PREF.d_genre || '', min: PREF.d_min || 0,
+              q: '', items: [], page: 0, pages: 1, sig: '', loading: false, err: ''};
+const GENRES = {};                                   // movie|tv → [{id, name}]
+let WISH = null;                                     // můj wishlist (null = ještě nenačteno)
+const wkey = x => `${x.kind}:${x.id}`;
+const kindNoun = k => k==='movie' ? 'Film' : 'Seriál';
+const rate = r => r ? `${ic('star','i star')}${r.toFixed(1).replace('.',',')}` : '';
+
+// štítek dostupnosti na Webshare (wishlist): „4K · CZ dabing“ / „Zatím není“ / „Hledám…“
+function availTxt(a){
+  if(!a) return ['', 'Hledám na Webshare…'];
+  if(!a.count) return ['', 'Na Webshare zatím není'];
+  const t = [a.best_q, a.best_lang].filter(Boolean).join(' · ') || `${a.count} ${plural(a.count,'verze','verze','verzí')}`;
+  return [a.has_4k_cz ? 'top' : 'ok', t];
+}
+function tmCard(x, i){
+  const w = x.wish || (WISH||[]).some(y => wkey(y)===wkey(x));
+  const [acls, atxt] = x.avail !== undefined && !x.have ? availTxt(x.avail) : ['', ''];
+  return `<div class="card tm" data-i="${i}" tabindex="0" role="button">
+    <div class="poster"><div class="ph">${esc((x.title||'?').split(/\s+/).slice(0,2).map(t=>t[0]).join('').toUpperCase())}</div>
+      ${x.poster ? `<img loading="lazy" referrerpolicy="no-referrer" src="${tmImg(x.poster)}" alt="" onerror="this.remove()">` : ''}
+      <button class="wbtn${w?' on':''}" data-w="${i}" title="${w?'Odebrat z wishlistu':'Přidat do wishlistu'}" aria-label="Wishlist">${ic('heart')}</button>
+      ${x.have ? `<span class="have" title="Už je v knihovně">${ic('check')}Mám</span>` : ''}
+      ${x.new_4k ? `<span class="new">NOVĚ 4K</span>` : ''}
+      ${atxt ? `<div class="avail"><span class="${acls}">${esc(atxt)}</span></div>` : ''}
+      <div class="ov">${x.rating?`<span>${rate(x.rating)}</span>`:''}${x.votes?`<span>${x.votes} hlasů</span>`:''}</div></div>
+    <div class="t" title="${esc(x.title)}">${esc(x.title)}</div>
+    <div class="s">${[x.year, DISC.kind!==x.kind || location.hash.startsWith('#/wishlist') ? kindNoun(x.kind) : ''].filter(Boolean).join(' · ')}</div></div>`;
+}
+
+async function getJSON(url, opt){
+  const r = await fetch(url, opt), d = await r.json().catch(() => ({}));
+  if(!r.ok) throw new Error(d.detail || `Chyba ${r.status}`);
+  return d;
+}
+async function loadWish(){
+  try{ WISH = await getJSON('/api/wishlist'); }catch(e){ WISH = WISH || []; }
+  const n = WISH.filter(w => w.new_4k && !w.have).length;
+  document.querySelectorAll('.navcnt').forEach(b => { b.textContent = n; b.classList.toggle('on', n > 0); });
+}
+async function toggleWish(x){
+  const on = (WISH||[]).some(y => wkey(y)===wkey(x));
+  try{
+    if(on) await getJSON(`/api/wishlist/${x.kind}/${x.id}`, {method:'DELETE'});
+    else await getJSON('/api/wishlist', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({kind:x.kind, id:x.id})});
+  }catch(e){ toast('Nepovedlo se', true, e.message); return; }
+  x.wish = !on;
+  toast(on ? 'Odebráno z wishlistu' : 'Přidáno do wishlistu', false, on ? x.title : `${x.title} · hledám verze na Webshare`, 'heart');
+  await loadWish();
+  render(false);
+  // po přidání hlídač hledá na pozadí → štítek dostupnosti za pár sekund
+  if(!on) setTimeout(async () => { await loadWish(); if(route()[0]==='wishlist') render(false); }, 8000);
+}
+
+async function loadDiscover(more){
+  const sig = JSON.stringify([DISC.kind, DISC.list, DISC.genre, DISC.min, DISC.q]);
+  if(!more && sig === DISC.sig) return;
+  if(!more){ DISC.items = []; DISC.page = 0; DISC.pages = 1; }
+  DISC.sig = sig; DISC.loading = true; DISC.err = ''; render(false);
+  try{
+    if(!GENRES[DISC.kind]) GENRES[DISC.kind] = await getJSON(`/api/tmdb/genres?kind=${DISC.kind}`);
+    if(DISC.q){
+      DISC.items = await getJSON(`/api/tmdb/search?kind=${DISC.kind}&q=${encodeURIComponent(DISC.q)}`); DISC.pages = 1;
+    } else {
+      const p = new URLSearchParams({kind:DISC.kind, list:DISC.list, genre:DISC.genre, min:DISC.min, page:DISC.page+1});
+      const d = await getJSON('/api/discover?' + p);
+      if(sig !== DISC.sig) return;                   // mezitím přepnuto jinam
+      const seen = new Set(DISC.items.map(wkey));    // TMDB mezi stránkami občas opakuje titul
+      DISC.items.push(...d.items.filter(x => !seen.has(wkey(x)))); DISC.page = d.page; DISC.pages = d.pages;
+    }
+  }catch(e){ DISC.err = e.message; }
+  DISC.loading = false;
+  render(false);
+}
+
+function renderDiscover(){
+  const k = DISC.kind, gl = GENRES[k] || [];
+  const minOpts = [[0,'Jakékoli hodnocení'],[6,'6+'],[7,'7+'],[7.5,'7,5+'],[8,'8+']];
+  $('#view').innerHTML = `<div class="wrap page">
+    <div class="lhead"><div><h1>Objevit</h1><div class="sub">Nové a dobře hodnocené filmy a seriály. ${ic('heart','i')} = do wishlistu, klik = detail a verze na Webshare.</div></div></div>
+    <div class="dtools">
+      <div class="line">
+        <div class="seg" id="dkind"><button data-v="movie" class="${k==='movie'?'on':''}">${ic('film')}Filmy</button><button data-v="tv" class="${k==='tv'?'on':''}">${ic('tv')}Seriály</button></div>
+        <label class="tsearch">${ic('search')}<input type="search" id="dq" placeholder="Najít konkrétní ${k==='movie'?'film':'seriál'}…" autocomplete="off" value="${esc($('#dq') ? $('#dq').value : DISC.q)}"></label>
+        ${DISC.q ? '' : `<select class="sel" id="dmin">${minOpts.map(([v,t])=>`<option value="${v}"${+DISC.min===v?' selected':''}>${t}</option>`).join('')}</select>`}
+      </div>
+      ${DISC.q ? '' : `<div class="genres" id="dlist">${Object.entries(LISTS).map(([v,t])=>`<button data-v="${v}" class="${DISC.list===v?'on':''}">${t}</button>`).join('')}</div>
+      ${gl.length ? `<div class="genres" id="dgenre"><button data-g="" class="${DISC.genre?'':'on'}">Všechny žánry</button>${gl.map(g=>`<button data-g="${g.id}" class="${String(g.id)===String(DISC.genre)?'on':''}">${esc(g.name)}</button>`).join('')}</div>` : ''}`}
+    </div>
+    ${DISC.err ? `<div class="empty" style="color:var(--err)">${esc(DISC.err)}</div>`
+      : DISC.items.length ? `<div class="grid" id="tmgrid">${DISC.items.map(tmCard).join('')}</div>`
+      : `<div class="empty">${DISC.loading ? 'Načítám…' : 'Nic nenalezeno. Zkus jiný žánr nebo nižší hodnocení.'}</div>`}
+    ${DISC.items.length && DISC.page < DISC.pages ? `<div class="more"><button class="btn" id="dmore"${DISC.loading?' disabled':''}>${DISC.loading?'Načítám…':'Načíst další'}</button></div>` : ''}
+    <div class="tmdbnote">Data o filmech: TMDB (themoviedb.org). Tento web používá TMDB API, ale TMDB ho neschvaluje ani necertifikuje.</div>
+  </div>`;
+  const set = (kv) => { Object.assign(DISC, kv); PREF.d_kind = DISC.kind; PREF.d_list = DISC.list; PREF.d_genre = DISC.genre; PREF.d_min = DISC.min; savePref(); loadDiscover(); };
+  $('#dkind').onclick = e => { const b = e.target.closest('button'); if(b && b.dataset.v !== DISC.kind) set({kind:b.dataset.v, genre:''}); };
+  $('#dlist')?.addEventListener('click', e => { const b = e.target.closest('button'); if(b) set({list:b.dataset.v}); });
+  $('#dgenre')?.addEventListener('click', e => { const b = e.target.closest('button'); if(!b) return; const sx = $('#dgenre').scrollLeft; set({genre:b.dataset.g}); if($('#dgenre')) $('#dgenre').scrollLeft = sx; });
+  if($('#dmin')) $('#dmin').onchange = e => set({min:+e.target.value});
+  $('#dmore')?.addEventListener('click', () => loadDiscover(true));
+  let t; $('#dq').oninput = e => { clearTimeout(t); t = setTimeout(() => { DISC.q = e.target.value.trim(); loadDiscover(); }, 450); };
+  loadDiscover();
+}
+
+function renderWish(){
+  if(!WISH){ $('#view').innerHTML = `<div class="wrap empty">Načítám…</div>`; loadWish().then(() => render(false)); return; }
+  const want = WISH.filter(w => !w.have), have = WISH.filter(w => w.have);
+  // nahoru: nově ve 4K, pak co už jde stáhnout (4K s češtinou > cokoli), pak zbytek
+  const score = w => (w.new_4k ? 4 : 0) + (w.avail?.has_4k_cz ? 2 : 0) + (w.avail?.count ? 1 : 0);
+  want.sort((a,b) => score(b) - score(a) || b.added - a.added);
+  const all = [...want, ...have];
+  $('#view').innerHTML = `<div class="wrap page">
+    <div class="lhead"><div><h1>Wishlist</h1><div class="sub">${want.length} ${plural(want.length,'titul','tituly','titulů')} ke stažení${have.length?` · ${have.length} už v knihovně`:''} · Webshare se kontroluje každých 6 h</div></div>
+      <div class="tools"><a class="btn" href="#/objevit">${ic('compass')}Objevit další</a></div></div>
+    ${!WISH.length ? `<div class="hintcard">Wishlist je prázdný. V <a href="#/objevit" style="color:var(--acc)">Objevit</a> klikni na ${ic('heart','i')} u filmu nebo seriálu, který chceš vidět.</div>` : ''}
+    ${want.length ? `<div class="grid" id="tmgrid">${want.map((w,i) => tmCard(w, i)).join('')}</div>` : WISH.length ? `<div class="empty">Všechno z wishlistu už máš v knihovně.</div>` : ''}
+    ${have.length ? `<section class="row"><div class="rowhead"><h2>Už v knihovně<small>${have.length}</small></h2></div>
+      <div class="grid" id="tmgrid2">${have.map((w,i) => tmCard(w, want.length + i)).join('')}</div></section>` : ''}
+  </div>`;
+  WISH_VIEW = all;
+}
+let WISH_VIEW = [];
+const viewItems = () => route()[0]==='wishlist' ? WISH_VIEW : DISC.items;
+
+$('#view').addEventListener('click', e => {
+  const wb = e.target.closest('.wbtn');
+  if(wb){ e.preventDefault(); e.stopPropagation(); const x = viewItems()[+wb.dataset.w]; if(x) toggleWish(x); return; }
+  const c = e.target.closest('.card.tm'); if(!c) return;
+  const x = viewItems()[+c.dataset.i]; if(x) openTm(x);
+});
+$('#view').addEventListener('keydown', e => {
+  const c = e.target.closest?.('.card.tm'); if(c && e.key === 'Enter' && !e.target.closest('.wbtn')) openTm(viewItems()[+c.dataset.i]);
+});
+
+/* okno titulu: detail z TMDB + verze na Webshare */
+let TM = null;
+function tmHead(x){
+  const w = (WISH||[]).some(y => wkey(y)===wkey(x));
+  return `${x.backdrop ? `<div class="bg" style="background-image:url('${tmImg(x.backdrop,'w780')}')"></div>` : ''}
+    <div class="poster">${x.poster ? `<img referrerpolicy="no-referrer" src="${tmImg(x.poster)}" alt="">` : ''}</div>
+    <div style="min-width:0;flex:1"><h4>${esc(x.title)}</h4>${x.orig && x.orig !== x.title ? `<div class="orig">${esc(x.orig)}</div>` : ''}
+      ${metaHtml({year:x.year, rating:x.rating, minutes:x.minutes}, [kindNoun(x.kind), ...(x.seasons?[`${x.seasons} ${plural(x.seasons,'série','série','sérií')}`]:[]), ...(x.have?[`<span class="seen">${ic('check')}v knihovně</span>`]:[])])}
+      ${(x.genres||[]).length ? `<div class="tags">${x.genres.slice(0,4).map(g=>`<span>${esc(g)}</span>`).join('')}</div>` : ''}
+      ${x.overview ? `<p class="ov">${esc(x.overview)}</p>` : ''}
+      <div class="acts"><button class="btn heart${w?' on':''}" id="tmw">${ic('heart')}${w?'Ve wishlistu':'Do wishlistu'}</button>
+        <a class="btn" href="https://www.themoviedb.org/${x.kind}/${x.id}" target="_blank" rel="noopener">TMDB</a></div></div>`;
+}
+// ruční hledání na webu služby (když Objevit nic nenajde / chci vybrat sám) → odkaz pak vložit do lišty
+function extSearch(x){
+  const t = encodeURIComponent(x.title);
+  return `<span class="ext">Hledat na webu:
+    <a href="https://webshare.cz/#/search?what=${t}" target="_blank" rel="noopener">Webshare</a>
+    <a href="https://fastshare.cloud/?term=${t}" target="_blank" rel="noopener">Fastshare</a></span>`;   // Fastshare přesměruje na /<slug>/s
+}
+async function openTm(x){
+  TM = {x, files:null, packs:[], have:new Set(), eps:{}, season:null, cache:{}, ep:null, added:new Set()};
+  $('#tmh').innerHTML = tmHead(x);
+  $('#tmf').innerHTML = `<div class="tmsg">Hledám verze na Webshare…</div>`;
+  if(!$('#tm').open) $('#tm').showModal();
+  try{
+    const d = await getJSON(`/api/wishlist/files?kind=${x.kind}&id=${x.id}`);
+    if(TM?.x !== x) return;
+    Object.assign(x, {genres:d.info.genres, minutes:d.info.minutes, seasons:d.info.seasons, overview:x.overview || d.info.overview, avail:d.summary});
+    Object.assign(TM, {files:d.files, packs:d.packs||[], eps:d.info.season_eps||{}});
+    tmHave(d.have);
+    $('#tmh').innerHTML = tmHead(x);
+    renderFiles();
+    if(x.new_4k){ x.new_4k = false; loadWish().then(() => render(false)); }    // štítek „nově 4K“ viděn
+  }catch(e){ if(TM?.x === x) $('#tmf').innerHTML = `<div class="tmsg" style="color:var(--err)">${esc(e.message)}</div>`; }
+}
+const tmHave = list => { if(list) TM.have = new Set(list.map(([s,e]) => s+':'+e)); };
+const haveEp = v => v.ep && TM.have.has(v.ep[0]+':'+v.ep[1]);
+const qc = q => q==='4K' ? 'q4' : q==='1080p' ? 'q2' : '';
+// seriál: série z TMDB + co se našlo na Webshare
+function tmSeasons(){
+  const s = new Set(Object.keys(TM.eps).map(Number));
+  TM.files.forEach(v => v.ep && s.add(v.ep[0])); TM.packs.forEach(p => p.pack && s.add(p.pack));
+  return [...s].filter(n => n > 0).sort((a,b) => a-b);
+}
+function fileRow(v, best){
+  const pack = v.pack != null, have = haveEp(v), added = TM.added.has(v.ident);
+  TM.byId.set(v.ident, v);
+  return `<div class="fr${best ? ' best' : ''}">
+    <div class="chips">${v.ep ? `<span class="chip epn">S${pad(v.ep[0])}E${pad(v.ep[1])}</span>` : ''}${pack ? `<span class="chip epn">${v.pack ? 'Celá série '+v.pack : 'Komplet'}</span>` : ''}${v.q ? `<span class="chip ${qc(v.q)}">${esc(v.q)}</span>` : `<span class="chip" title="Kvalita není v názvu">?</span>`}
+      ${v.lang ? `<span class="chip ${v.lang.includes('dabing')?'l2':'l1'}">${esc(v.lang)}</span>` : ''}${have ? `<span class="chip l2">${ic('check')}máš</span>` : ''}</div>
+    <div class="fn" title="${esc(v.name)}">${best ? '<small>Doporučeno</small>' : ''}${pack ? '<small class="pk">archiv · stahovač ho rozbalí a díly zařadí sám</small>' : ''}${esc(v.name)}</div>
+    <span class="sz">${fmtB(v.size)}</span>
+    <button class="btn sm${best ? ' primary' : ''}" data-id="${esc(v.ident)}"${added ? ' disabled' : ''}>${added ? ic('check')+'Stahuje se' : ic('dl')+'Stáhnout'}</button></div>`;
+}
+// nejlepší verze každého dílu série (soubory jsou po dílech, nejlepší první), bez dílů v knihovně
+function seasonPick(files){
+  const seen = new Set(), pick = [];
+  for(const v of files) if(v.ep && !seen.has(v.ep[1])){ seen.add(v.ep[1]); if(!haveEp(v)) pick.push(v); }
+  return {pick, found:seen.size};
+}
+function renderFiles(){
+  const f = TM.files, tv = TM.x.kind === 'tv';
+  TM.byId = new Map();
+  if(!tv){
+    if(!f.length){ $('#tmf').innerHTML = `<div class="tmsg">Na Webshare zatím nic není.${(WISH||[]).some(y=>wkey(y)===wkey(TM.x)) ? ' Hlídač to zkusí znovu za 6 h.' : ' Přidej si titul do wishlistu a hlídač bude kontrolovat, kdy se objeví.'}<div>${extSearch(TM.x)}</div></div>`; return; }
+    $('#tmf').innerHTML = `<div class="fh"><span class="fhl">Verze na Webshare${extSearch(TM.x)}</span><span>${f.length} ${plural(f.length,'soubor','soubory','souborů')} · nejlepší nahoře (čeština › 4K › 1080p › dabing › titulky)</span></div>`
+      + f.map((v,k) => fileRow(v, k===0)).join('');
+    return;
+  }
+  const seasons = tmSeasons(), cur = TM.season;
+  const tab = n => {
+    const tot = TM.eps[n] || 0, own = [...TM.have].filter(k => +k.split(':')[0] === n).length;
+    return `<a href="#" data-s="${n}" class="${cur===n?'on':''}" title="${tot ? `V knihovně ${own} z ${tot} dílů` : ''}">Série ${n}${tot && own>=tot ? ic('check','i ck') : tot ? `<small>${own}/${tot}</small>` : ''}</a>`;
+  };
+  let html = `<div class="fh"><span class="fhl">Verze na Webshare${extSearch(TM.x)}</span>
+      <form class="epq" id="epq"><input name="q" placeholder="Díl, např. s01e04" autocomplete="off" value="${TM.ep ? `s${pad(TM.ep.s)}e${pad(TM.ep.e)}` : ''}"><button class="btn sm" type="submit">${ic('search')}Najít</button></form></div>
+    <div class="tabs tmtabs"><a href="#" data-s="" class="${cur==null && !TM.ep ?'on':''}">Vše</a>${seasons.map(tab).join('')}</div>`;
+  if(TM.ep){                                            // jeden díl
+    const r = TM.ep;
+    html += `<div class="sbar"><span>Díl S${pad(r.s)}E${pad(r.e)}${TM.have.has(r.s+':'+r.e) ? ' · už ho máš v knihovně' : ''}</span><a href="#" class="back" data-back>${ic('chev')}Zpět</a></div>`;
+    html += r.files == null ? `<div class="tmsg">Hledám díl na Webshare…</div>`
+      : r.files.length ? r.files.map((v,k) => fileRow(v, k===0)).join('')
+      : `<div class="tmsg">Díl S${pad(r.s)}E${pad(r.e)} na Webshare není.<div>${extSearch(TM.x)}</div></div>`;
+  } else if(cur != null){                               // jedna série
+    const c = TM.cache[cur];
+    if(!c) html += `<div class="tmsg">Hledám sérii ${cur} na Webshare…</div>`;
+    else {
+      const tot = TM.eps[cur] || 0, {pick, found} = seasonPick(c.files), size = pick.reduce((a,v) => a+v.size, 0);
+      const own = [...TM.have].filter(k => +k.split(':')[0] === cur).length;
+      html += `<div class="sbar"><span>Na Webshare <b>${found}${tot ? ' z '+tot : ''}</b> ${plural(found,'díl','díly','dílů')} · v knihovně ${own}${tot ? ' z '+tot : ''}</span>
+        ${pick.length ? `<button class="btn sm primary" data-season="${cur}">${ic('dl')}Stáhnout celou sérii · ${pick.length} ${plural(pick.length,'díl','díly','dílů')} · ${fmtB(size)}</button>`
+          : found ? `<span class="ok">${ic('check')}Všechno dostupné už máš</span>` : ''}</div>`;
+      html += c.packs.map(v => fileRow(v, false)).join('');
+      html += c.files.length ? c.files.map(v => fileRow(v, false)).join('')
+        : `<div class="tmsg">Díly série ${cur} na Webshare nejsou${c.packs.length ? ', jen archiv výše' : ''}.<div>${extSearch(TM.x)}</div></div>`;
+    }
+  } else {                                              // vše (první hledání podle názvu)
+    if(!f.length && !TM.packs.length){ $('#tmf').innerHTML = html + `<div class="tmsg">Na Webshare zatím nic není.<div>${extSearch(TM.x)}</div></div>`; return; }
+    html += `<div class="sbar"><span>${f.length} ${plural(f.length,'soubor','soubory','souborů')} · po dílech${TM.packs.length ? ` · ${TM.packs.length} ${plural(TM.packs.length,'archiv','archivy','archivů')} celých sérií` : ''}</span><span class="dim">Celou sérii stáhneš po kliknutí na její záložku</span></div>`;
+    html += TM.packs.map(v => fileRow(v, false)).join('') + f.map(v => fileRow(v, false)).join('');
+  }
+  $('#tmf').innerHTML = html;
+}
+async function openSeason(n){
+  TM.ep = null; TM.season = n; renderFiles();
+  if(n == null || TM.cache[n]) return;
+  const x = TM.x;
+  try{
+    const d = await getJSON(`/api/wishlist/files?kind=tv&id=${x.id}&season=${n}`);
+    if(TM?.x !== x) return;
+    TM.cache[n] = {files:d.files, packs:d.packs||[]}; tmHave(d.have);
+  }catch(e){ toast('Hledání série se nepovedlo', true, e.message); if(TM.season === n) TM.season = null; }
+  if(TM?.x === x) renderFiles();
+}
+async function findEp(q){
+  const m = q.match(/^\s*s?(\d{1,2})\s*[ex×]\s*(\d{1,3})\s*$/i) || (TM.season && q.match(/^\s*(?:e|díl\s*)?(\d{1,3})\s*$/i) && [0, TM.season, q.match(/\d+/)[0]]);
+  if(!m) return toast('Nerozumím dílu', true, 'Napiš ho jako s01e04 nebo 1x04 (v otevřené sérii stačí číslo dílu).');
+  const s = +m[1], e = +m[2], x = TM.x;
+  TM.ep = {s, e, files:null}; renderFiles();
+  try{
+    const d = await getJSON(`/api/wishlist/files?kind=tv&id=${x.id}&season=${s}&ep=${e}`);
+    if(TM?.x !== x || TM.ep?.s !== s || TM.ep?.e !== e) return;
+    TM.ep.files = d.files; tmHave(d.have);
+  }catch(err){ toast('Hledání dílu se nepovedlo', true, err.message); TM.ep = null; }
+  if(TM?.x === x) renderFiles();
+}
+async function addFile(v){
+  const x = TM.x, movie = x.kind === 'movie';
+  return getJSON('/api/add', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({
+    url: `https://webshare.cz/#/file/${v.ident}`, target: movie ? 'filmy' : 'serialy',
+    // film se uloží jako „Název (Rok) [tmdbid-…]“ → Jellyfin ho rozpozná napoprvé
+    ...(movie ? {tmdb_id: x.id, title: x.title, year: x.year} : {})})});
+}
+async function downloadFile(v, btn){
+  const movie = TM.x.kind === 'movie', need = v.pack != null ? v.size * 2 : v.size;   // archiv: archiv + rozbalené
+  if(need > LIB.free * .9 && !await askConfirm('Málo místa?', v.name, `Soubor má ${fmtB(v.size)}${v.pack != null ? ' (archiv potřebuje místo dvakrát)' : ''}, volných je ${fmtB(LIB.free)}.`, 'Přesto stáhnout', 'Zrušit')) return;
+  btn.disabled = true;
+  try{
+    const d = await addFile(v);
+    TM.added.add(v.ident);
+    toast('Přidáno do stahování', false, `${cleanName(d.name)} · ${fmtB(d.size)} · ${destTxt(d.target)}`, movie ? 'film' : 'tv');
+    btn.innerHTML = `${ic('check')}Stahuje se`;
+    refresh();
+  }catch(e){ toast('Nepodařilo se přidat', true, e.message); btn.disabled = false; }
+}
+async function downloadSeason(n, btn){
+  const {pick} = seasonPick(TM.cache[n].files.filter(v => !TM.added.has(v.ident)));
+  if(!pick.length) return;
+  const size = pick.reduce((a,v) => a+v.size, 0), tot = TM.eps[n] || 0;
+  const missing = tot ? Array.from({length:tot}, (_,k) => k+1).filter(e => !TM.have.has(n+':'+e) && !TM.cache[n].files.some(v => v.ep[1] === e)) : [];
+  const note = `${pick.length} ${plural(pick.length,'díl','díly','dílů')}, celkem ${fmtB(size)} (volných ${fmtB(LIB.free)}). U každého dílu nejlepší verze: čeština › kvalita.`
+    + (missing.length ? ` Na Webshare chybí: ${missing.map(e => 'E'+pad(e)).join(', ')}.` : '') + (size > LIB.free * .9 ? ' POZOR: na disk se to nevejde.' : '');
+  if(!await askConfirm(`Stáhnout sérii ${n}?`, TM.x.title, note, 'Stáhnout', 'Zrušit')) return;
+  btn.disabled = true;
+  let ok = 0, fail = 0;
+  for(const v of pick){
+    btn.innerHTML = `${ic('dl')}Přidávám ${ok+fail+1}/${pick.length}…`;
+    try{ await addFile(v); TM.added.add(v.ident); ok++; }catch(e){ fail++; }
+  }
+  toast(fail ? `Přidáno ${ok} z ${pick.length} dílů` : `Série ${n} se stahuje`, fail > 0,
+        `${ok} ${plural(ok,'díl','díly','dílů')} · ${fmtB(size)} · do Seriálů${fail ? ` · ${fail} se nepodařilo přidat` : ''}`, 'tv');
+  refresh(); renderFiles();
+}
+$('#tm').addEventListener('click', e => {
+  if(e.target.closest('#tmx')) return $('#tm').close();
+  if(e.target === $('#tm')){                     // klik na pozadí mimo okno (na mobilu je okno přes celou obrazovku → prázdné místo nezavírá)
+    const r = $('#tm').getBoundingClientRect();
+    if(e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) $('#tm').close();
+    return;
+  }
+  if(e.target.closest('#tmw')) return toggleWish(TM.x).then(() => { $('#tmh').innerHTML = tmHead(TM.x); });
+  const t = e.target.closest('.tmtabs a[data-s]');
+  if(t){ e.preventDefault(); return openSeason(t.dataset.s === '' ? null : +t.dataset.s); }
+  if(e.target.closest('[data-back]')){ e.preventDefault(); TM.ep = null; return renderFiles(); }
+  const sb = e.target.closest('button[data-season]'); if(sb) return downloadSeason(+sb.dataset.season, sb);
+  const b = e.target.closest('button[data-id]'); if(b && TM.byId.has(b.dataset.id)) downloadFile(TM.byId.get(b.dataset.id), b);
+});
+$('#tm').addEventListener('submit', e => {
+  if(e.target.id !== 'epq') return;
+  e.preventDefault(); findEp(e.target.q.value);
+});
+
+/* ---------- render ---------- */
+function render(scrollTop){
+  if(!LIB) return;
+  const {movies, shows} = build(LIB.items);
+  const parts = route(), q = $('#q').value.trim();
+  clearInterval(HERO.t);
+  document.querySelectorAll('#nav a, #tabbar a').forEach(a => a.classList.toggle('on', !q && !document.body.classList.contains('msearch') && (parts[0]||'') === a.dataset.r));
+  $('#tsearch').classList.toggle('on', document.body.classList.contains('msearch'));
+  // přepsání stránky by vzalo fokus poli, do kterého se zrovna píše (obnova knihovny každých 30 s)
+  const focus = document.activeElement?.id, sel = focus && document.activeElement.selectionStart;
+  if(q) renderSearch(q, movies, shows);
+  else if(!parts.length) renderHome(movies, shows);
+  else if(parts[0]==='objevit') renderDiscover();
+  else if(parts[0]==='wishlist') renderWish();
+  else if(parts[0]==='filmy' && parts.length>1){
+    const m = movies.find(i => i.rel === 'filmy/' + parts.slice(1).join('/'));
+    if(m) renderMovie(m, movies);
+    else $('#view').innerHTML = `<div class="wrap empty">Film už v knihovně není. <a href="${href('filmy')}">Zpět na filmy</a></div>`;
+  }
+  else if(parts[0]==='filmy' || (parts[0]==='serialy' && parts.length===1)) renderList(parts[0], movies, shows);
+  else if(parts[0]==='serialy'){
+    const show = shows.get(parts[1]);
+    if(show) renderShow(show, parts.length>2 ? parts.slice(2).join('/') : null);
+    else $('#view').innerHTML = `<div class="wrap empty">Seriál už v knihovně není. <a href="${href('serialy')}">Zpět na seriály</a></div>`;
+  }
+  else $('#view').innerHTML = `<div class="wrap empty">Stránka neexistuje. <a href="#/">Na úvod</a></div>`;
+  if(focus && focus !== 'q' && document.getElementById(focus)){ const el = document.getElementById(focus); el.focus(); try{ el.setSelectionRange(sel, sel); }catch{} }
+  if(scrollTop) scrollTo({top:0, behavior:'instant'});
+}
+$('#view').addEventListener('click', e => {
+  const p = e.target.closest('p.ov'); if(p) p.classList.toggle('clamp');
+  const t = e.target.closest('a[data-genre]');        // štítek žánru na detailu → přehled s tím žánrem
+  if(t){ PREF['genre_'+t.dataset.kind] = t.dataset.genre; savePref(); }
+});
+
+/* ---------- oprava rozpoznání ---------- */
+// Z názvu souboru odhadne název + rok: vše od roku / kvalitativních značek dál pryč.
+// Interstellar CZ (4KHDR).mkv → Interstellar · Valerian A Město… (2017) Uhd 4K… → Valerian A Město…, 2017
+const JUNK = /\b(2160p|1080p|720p|576p|480p|4k|uhd|hdr10\+?|hdr|dv|dolby ?vision|hevc|h ?26[45]|x26[45]|avc|remux|blu-?ray|bdrip|brrip|web-?dl|webrip|hdtv|dts(-hd)?|atmos|truehd|ddp?|aac|ac3|cz|sk|en|eng|cze|dabing|titulky|tit|forced|imax|multi|subs?)\b.*$/i;
+function guessTitle(raw){
+  let s = String(raw||'').replace(/\.[a-z0-9]{2,4}$/i, '');
+  let year = null;
+  // poslední rok s textem před sebou: „1917 (2019)“ i „Blade.Runner.2049.2017“ → rok je ten druhý
+  const yrs = [...s.matchAll(/(^|[\s.(\[_-])((?:19|20)\d{2})(?=$|[\s.)\]_-])/g)]
+    .map(m => ({y: +m[2], before: s.slice(0, m.index + m[1].length).replace(/[\s.(\[_-]+$/,'')}))
+    .filter(x => x.before);
+  if(yrs.length){ const last = yrs[yrs.length-1]; year = last.y; s = last.before; }
+  s = s.replace(/[._]+/g, ' ').replace(/\[[^\]]*\]|\([^)]*\)/g, ' ');
+  const cut = s.replace(JUNK, '');
+  s = (cut.trim() ? cut : s).replace(/\s+/g, ' ').replace(/[\s-]+$/, '').trim();
+  return {name: s, year};
+}
+let IDENT = null;
+function openIdent(id, kind, file, title, year){
+  const g = title ? {name: title, year} : guessTitle(file);
+  IDENT = {id, kind};
+  $('#ifile').textContent = (kind==='movie' ? 'Soubor: ' : 'Složka: ') + file;
+  const f = $('#iq'); f.name.value = g.name; f.year.value = g.year || '';
+  $('#ires').innerHTML = '';
+  $('#ident').showModal();
+  identSearch();
+}
+async function identSearch(){
+  const f = $('#iq'), box = $('#ires');
+  box.innerHTML = `<div class="imsg">Hledám v TMDB…</div>`;
+  try{
+    const r = await fetch('/api/identify/search', {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({id: IDENT.id, kind: IDENT.kind, name: f.name.value, year: +f.year.value || null})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.detail || 'Hledání selhalo');
+    box.innerHTML = d.length ? d.map(x => `<div class="ir" data-k="${x.index}">
+        <div class="pp">${x.image ? `<img loading="lazy" referrerpolicy="no-referrer" src="${esc(x.image)}" alt="" onerror="this.remove()">` : ''}</div>
+        <div class="bd"><div class="nm">${esc(x.name)}${x.year?`<span>${x.year}</span>`:''}</div>
+          <div class="src">${esc(x.source||'')}${x.tmdb?` · TMDB ${esc(x.tmdb)}`:''}${x.imdb?` · ${esc(x.imdb)}`:''}</div>
+          ${x.overview ? `<div class="ov">${esc(x.overview)}</div>` : ''}</div>
+        <span class="btn sm primary go">Vybrat</span></div>`).join('')
+      : `<div class="imsg">Nic nenalezeno. Zkus originální (anglický) název nebo smaž rok.</div>`;
+  }catch(e){ box.innerHTML = `<div class="imsg" style="color:var(--err)">${esc(e.message)}</div>`; }
+}
+$('#iq').addEventListener('submit', e => { e.preventDefault(); identSearch(); });
+$('#iclose').onclick = () => $('#ident').close();
+$('#ident').addEventListener('click', e => { if(e.target === $('#ident')) $('#ident').close(); });   // klik mimo okno
+$('#ires').addEventListener('click', async e => {
+  const row = e.target.closest('.ir'); if(!row) return;
+  const name = row.querySelector('.nm').textContent;
+  row.style.opacity = .5; row.style.pointerEvents = 'none';
+  const r = await fetch('/api/identify/apply', {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({id: IDENT.id, index: +row.dataset.k})});
+  const d = await r.json().catch(()=>({}));
+  if(!r.ok){ toast('Nepodařilo se použít', true, d.detail||''); row.style.opacity = 1; row.style.pointerEvents = ''; return; }
+  $('#ident').close();
+  toast('Stahuji metadata', false, `${name} · popis a obrázky se objeví za pár sekund`, 'wand');
+  // Jellyfin metadata stahuje na pozadí → pár obnov po sobě (nezměněná knihovna se nepřekresluje)
+  [2500, 6000, 12000, 25000].forEach(t => setTimeout(loadLib, t));
+});
+
+/* ---------- mazání ---------- */
+function askDelete(what, size, dir){
+  return askConfirm('Opravdu smazat?', what, `${fmtB(size)} · ${dir ? 'smaže se celá složka, ' : ''}zmizí z disku i z Jellyfinu. Vrátit to nejde.`, 'Smazat', 'Zrušit');
+}
+function askConfirm(title, what, note, yes, no){
+  const dlg = $('#confirm');
+  $('#ctitle').textContent = title; $('#cyes').textContent = yes; $('#cno').textContent = no;
+  $('#cwhat').textContent = what;
+  $('#cnote').textContent = note;
+  dlg.returnValue = '';                              // Esc nemění returnValue → jinak by zůstalo „yes“ z minula
+  dlg.showModal();
+  $('#cno').focus();                                 // výchozí je Zrušit, ať Enter nic nesmaže
+  return new Promise(res => dlg.addEventListener('close', () => res(dlg.returnValue === 'yes'), {once:true}));
+}
+let toastT;
+function toast(text, err, sub, icon){
+  let t = $('.toast'); if(t) t.remove();
+  t = document.createElement('div'); document.body.append(t);
+  t.className = 'toast' + (err ? ' err' : '');
+  t.innerHTML = `<span class="tic">${ic(icon || (err ? 'alert' : 'check'))}</span><div class="tt"><b>${esc(text)}</b>${sub ? `<span>${esc(sub)}</span>` : ''}</div>`;
+  clearTimeout(toastT); toastT = setTimeout(() => t.remove(), 4000);
+}
+$('#view').addEventListener('click', async e => {
+  const b = e.target.closest('button.del'); if(!b) return;
+  e.preventDefault(); e.stopPropagation();
+  const dir = b.dataset.kind==='dir';
+  if(!await askDelete(b.dataset.label, Number(b.dataset.size), dir)) return;
+  const r = await fetch((dir?'/api/library/dir':'/api/library')+'?rel='+encodeURIComponent(b.dataset.rel), {method:'DELETE'});
+  const d = await r.json().catch(()=>({}));
+  if(!r.ok){ toast('Smazání se nepovedlo', true, d.detail||''); return; }
+  toast('Smazáno', false, `${b.dataset.label} · uvolněno ${fmtB(d.freed)}`, 'trash');
+  // stojím uvnitř smazané složky / na detailu smazaného filmu → o úroveň výš
+  const del = b.dataset.rel.split('/'), cur = route();
+  if(del.every((p,k) => cur[k]===p)) location.hash = href(...del.slice(0,-1));
+  loadLib();
+});
+
+let libSig = '';
+async function loadLib(){
+  try{
+    const txt = await (await fetch('/api/library')).text();
+    if(txt === libSig) return;                       // nic se nezměnilo → nepřekreslovat (hero by poskočil)
+    libSig = txt; LIB = JSON.parse(txt);
+    IMGV = {};
+    for(const i of LIB.items) if(i.jf_id && i.img_v) IMGV[i.jf_id] = i.img_v;
+    for(const [sid, x] of Object.entries(LIB.series||{})) if(x.img_v) IMGV[sid] = x.img_v;
+    const total = LIB.used + LIB.free;
+    $('#disktxt').textContent = `${fmtB(LIB.used)} médií · volné ${fmtB(LIB.free)}`;
+    $('#diskbar').style.width = (total ? LIB.used/total*100 : 0)+'%';
+    // obnova každých 30 s nesmí přeskočit hero ani vyhodit scroll
+    render(false);
+  }catch(e){ $('#view').innerHTML='<div class="wrap empty">Knihovnu se nepodařilo načíst.</div>'; }
+}
+lastRoute = route().slice(0,2).join('/');
+(async () => {
+  // role musí být známá před prvním vykreslením (jinak by rodina na okamžik viděla tlačítka Smazat)
+  try{ const m = await (await fetch('/api/me')).json(); ADMIN = !!m.admin; ME = m.user || ''; JF_URL = m.jf_url || ''; }catch(e){ ADMIN = false; }
+  $('#logout').lastChild.textContent = `Odhlásit ${ME}`;
+  refresh(); setInterval(refresh, 2000);
+  loadLib(); setInterval(loadLib, 30000);
+  loadWish(); setInterval(() => loadWish().then(() => { if(route()[0]==='wishlist' && !$('#tm').open) render(false); }), 5 * 60000);
+})();
+</script>
+</body>
+</html>
