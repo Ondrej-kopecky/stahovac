@@ -26,7 +26,7 @@ Podrobný popis, jak to celé funguje: <https://ongy.cz/pages/server/kino/>
 ## Spuštění
 
 ```bash
-git clone https://github.com/<UŽIVATEL>/stahovac.git
+git clone https://github.com/Ondrej-kopecky/stahovac.git
 cd stahovac
 cp .env.example .env
 nano .env                                  # vyplň aspoň WS_USER, WS_PASS, WEB_PASS a MEDIA_DIR
