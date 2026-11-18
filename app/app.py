@@ -27,7 +27,7 @@ from pydantic import BaseModel
 from md5crypt import md5crypt
 import discover
 import extract
-from extract import normalize_episode, series_subdir
+from extract import library_name, normalize_episode, series_subdir
 
 WS_API = "https://webshare.cz/api"
 WS_USER = os.environ.get("WS_USER", "")
@@ -498,6 +498,7 @@ async def add(req: AddReq, request: Request):
         if target == "serialy" and not archive:
             name = normalize_episode(name)
         subdir = series_subdir(name) if target == "serialy" and not archive else ""
+        name = library_name(name, subdir)
         # Stahujeme do .incomplete/ (Jellyfin ji nevidí); hook on_complete.py po dokončení
         # přesune soubor do {target}{subdir} a spustí sken té složky v Jellyfinu.
         gid = await aria2(client, "addUri", [link],

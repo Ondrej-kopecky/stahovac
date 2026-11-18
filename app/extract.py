@@ -73,6 +73,18 @@ def series_subdir(name: str) -> str:
     return f"/{show}/Season {int(m.group('s')):02d}"
 
 
+def library_name(name: str, sub: str) -> str:
+    """Název dílu sladěný se složkou seriálu, když jde o stejný název jinak napsaný:
+    'South park S18E01 - X.mkv' do '/South Park/Season 18' → 'South Park S18E01 - X.mkv'.
+    Jiný název ('Cerveny-trpaslik S12E01' v Red Dwarf) nechá být."""
+    if not sub or not (m := re.match(r"^(?P<show>.+?)(?P<rest>[ ._-]+S\d{1,2}E\d{1,3}.*)$", name, re.I)):
+        return name
+    folder = sub.split("/")[1]
+    if m["show"] != folder and _fold(m["show"]) == _fold(folder):
+        return folder + " " + m["rest"].lstrip(" ._-")
+    return name
+
+
 def drop_season_suffix(show: str, season: int) -> str:
     """'South Park 06 S06E01' → 'South Park' (uploader dal číslo série do názvu seriálu, Jellyfin by
     založil seriál „South Park 06“). Jen když číslo = série a je s nulou, nebo seriál bez čísla už
@@ -97,7 +109,11 @@ def show_name(text: str) -> str:
     'Futurama.S01-S07.1080p.CZ' → 'Futurama'. Před „ - “ bývá originální název."""
     text = re.sub(r"(?:\.part\d+)?\.(?:rar|zip|7z)(?:\.\d{3})?$", "", text, flags=re.I)
     text = text.split(" - ")[0]
-    text = re.sub(r"[._]+", " ", text)
+    # Název bez mezer ('South-park-S16-CZ-HD-720p-16.Série_Uploader') → pomlčka je oddělovač jako tečka
+    text = re.sub(r"[._-]+" if " " not in text else r"[._]+", " ", text)
+    # Seriál končí tam, kde začíná Sxx / SxxEyy (za ním bývá jen kvalita, jazyk a podpis uploadera)
+    if (m := re.search(r"\bS\d{1,2}(?:E\d{1,3})?\b", text, re.I)) and text[:m.start()].strip(" -"):
+        text = text[:m.start()]
     text = _SHOW_JUNK.sub(" ", text)
     text = re.sub(r"\(\s*\)|\[\s*\]", " ", text)          # po odstranění zbylé prázdné závorky
     return re.sub(r"\s+", " ", text).strip(" -")
@@ -137,7 +153,29 @@ def library_dir(show: str) -> str:
     except OSError:
         return show
     hits = [d for d in dirs if len(_fold(d)) >= 4 and _fold(show).endswith(_fold(d))]
-    return hits[0] if len(hits) == 1 else show
+    if len(hits) == 1:
+        return hits[0]
+    if not hits:
+        # Seriál pod jiným názvem (česky × anglicky: 'Červený trpaslík S13E01'
+        # vedle 'Red Dwarf'): díl se stejným názvem seriálu už leží v jiné složce → tam
+        want = _fold(show)
+        known = {d for d in dirs if want and _has_episodes_of(os.path.join(lib, d), want)}
+        if len(known) == 1:
+            return known.pop()
+    return show
+
+
+def _has_episodes_of(show_dir: str, want: str) -> bool:
+    """Je v serialy/<složka>/Season NN díl, jehož název seriálu (před SxxEyy) je po _fold() = want?"""
+    try:
+        seasons = [s for s in os.listdir(show_dir) if os.path.isdir(os.path.join(show_dir, s))]
+        for s in seasons:
+            for f in os.listdir(os.path.join(show_dir, s)):
+                if (m := re.match(r"^(.+?)[ ._-]+S\d{1,2}E\d{1,3}", f, re.I)) and _fold(m[1]) == want:
+                    return True
+    except OSError:
+        pass
+    return False
 
 
 def free_name(dest):
@@ -493,7 +531,7 @@ def _sort_out(tmp: str, target: str, archive_show: str = "", archive_season_no: 
                     title = (ep["title"] or "").strip(" ._-")
                     name = f"{show} S{season:02d}E{int(ep['e']):02d}{' - ' + title if title else ''}{ep['ext']}"
                     sub = series_subdir(name)
-            plan.append((full, name, sub, ext in VIDEO_EXT))
+            plan.append((full, library_name(name, sub), sub, ext in VIDEO_EXT))
 
     # Archiv = jeden seriál, ale díly bývají pojmenované různě („Red Dwarf S05E01“, „Cerveny-trpaslik
     # S12E01“) → v Jellyfinu by vznikly 3 seriály. Když se názvy v archivu liší, složku určí název

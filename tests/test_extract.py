@@ -104,7 +104,9 @@ X.SPACE_RESERVE = 0
 # 6b) díly bez názvu seriálu („05/S05E01-Hololod.avi“ — Červený trpaslík z Webshare, 13. 10.)
 import zipfile
 for t, want in [("Red Dwarf - Červený trpaslík 1-12 komplet.zip", "Red Dwarf"), ("Futurama.S01-S07.1080p.CZ.part1.rar", "Futurama"),
-                ("The Office (US) Season 1-9.7z.001", "The Office (US)"), ("Červený trpaslík 1-12.zip", "Červený trpaslík")]:
+                ("The Office (US) Season 1-9.7z.001", "The Office (US)"), ("Červený trpaslík 1-12.zip", "Červený trpaslík"),
+                ("South-park-S16-CZ-HD-720p-16.Série_Uploader.rar", "South park"),      # pomlčky + podpis uploadera
+                ("VisionQuest.S01E06.Deadlock.2160p.mkv", "VisionQuest")]:
     check(f"show_name {t!r} → {want!r}", X.show_name(t) == want, X.show_name(t))
 for dname in ("05", "Season 5", "S05", "5. série", "2. sezóna"):
     check(f"složka {dname!r} = jen série", bool(X.SEASON_DIR.match(dname)))
